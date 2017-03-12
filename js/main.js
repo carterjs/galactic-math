@@ -4,7 +4,7 @@ var config = {
         "bottomPanelColor":0x44ffff,
         "baseColor": 0xff0000,
         "panelAlpha":0.5,
-        "font":"Verdana"
+        "font":"Quantico"
     },
     "control":{
         //Scale factor for joystick movement
@@ -127,6 +127,7 @@ for(var i=0;i<fieldSize/10;i++) {
     graphics.drawCircle(0,0,Math.random()*5+5);
     graphics.endFill();
     star.texture = graphics.generateTexture();
+    star.anchor.set(0.5);
     star.position.set(Math.random()*(fieldSize+app.view.width)-app.view.width,Math.random()*(fieldSize+app.view.height))-app.view.height;
     star.baseX = star.position.x;
     star.baseY = star.position.y;
@@ -238,14 +239,74 @@ var camera = {
 };
 
 function inView(x,y,width,height) {
-    return x+width > -camera.x && x < -camera.x+app.view.width && y+height > -camera.y && y < -camera.y+app.view.height;
+    return x+width/2 > -camera.x && x-width/2 < -camera.x+app.view.width && y+height/2 > -camera.y && y-height/2 < -camera.y+app.view.height;
 }
 
-//Start at level 1 or localStorage level
-var level = 4;
+//Timers
+var timers = [],
+    d = new Date();
+var Timer = function(duration,action) {
+    this.startTime = Date.now(),
+        this.endTime = this.startTime+duration,
+        this.action = action,
+        this.active = true;
+}
+Timer.prototype.update = function() {
+    var time = Date.now();
+    if(time > this.endTime) {
+        this.action();
+        this.active = false;
+    }
+}
+timers.push(new Timer(3000,function() {console.log("What up bro!")}));
 
-function getRadius() {
-    return Math.round((Math.random()-0.5)*config.levels[level-1].range);
+//Rocket
+var rocket = new PIXI.Sprite.fromImage('img/rocket.png');
+rocket.anchor.set(0.5);
+rocket.width = 100;
+rocket.height = 150;
+main.addChild(rocket);
+
+function resetRocket() {
+    var angle = Math.random()*2*Math.PI;
+    rocket.position.x = camera.x+app.view.width/2+Math.cos(angle)*(Math.max(app.view.width,app.view.height));
+    rocket.position.y = camera.x+app.view.height/2+Math.sin(angle)*(Math.max(app.view.width,app.view.height));
+    rocket.velocityX = -Math.cos(angle)*10;
+    rocket.velocityY = -Math.sin(angle)*10;
+    rocket.rotation = angle-Math.PI/2;
+    rocket.active = true;
+    rocket.visible = false;
+}
+resetRocket();
+
+//Start at level 1 or localStorage level
+var level = 4,
+    levelText = new PIXI.Text(level,{font: '35px ' + config.style.font,fill: 0xffffff});
+
+function getRadius(operator) {
+    if(!config.levels[level-1].operators.includes('+')) {
+        return Math.round((Math.random()-0.5)*config.levels[level-1].range);
+    } else {
+        return Math.round(Math.random()*config.levels[level-1].range);
+    }
+    switch(operator) {
+        case "+":
+        case "-":
+            return Math.round(Math.random()*config.levels[level-1].range);
+            break;
+        case "*":
+            return Math.round((Math.random()-0.5)*config.levels[level-1].range);
+            break;
+        case "/":
+            var options = [];
+            for(var i=1;i<current/2;i++) {
+                if(current % i == 0) {
+                    options.push(i);
+                }
+            }
+            return options[Math.floor(Math.random()*options.length)];
+            break;
+    }
 }
 
 //Create circles
@@ -254,26 +315,29 @@ function createCircle() {
     
     var circle = new PIXI.Sprite(),
         operators = config.levels[level-1].operators,
+        operator = operators[Math.floor(Math.random()*operators.length)],
         range = Math.random()*config.levels[level-1].range,
-        radius = getRadius(),
+        radius = getRadius(operator),
         displayRadius = Math.abs(radius)+30,
         color = Math.floor(Math.random()*0xffffff),
         alpha = Math.random()*0.5+0.25;
     
+    circle.anchor.set(0.5);
     circle.position.x = Math.random()*fieldSize;
     circle.position.y = Math.random()*fieldSize;
     circle.velocityX = (Math.random()-0.5)*5;
     circle.velocityY = (Math.random()-0.5)*5;
-    circle.operator = operators[Math.floor(Math.random()*operators.length)];
+    circle.operator = operator;
     circle.radius = radius;
     circle.active = true;
+    circle.scale.set(0);
     
-    var text = new PIXI.Text(radius > 0 ? circle.operator + radius : circle.operator + "(" + radius + ")", {font: 'bold 30px ' + config.style.font + '', fill: 0xffffff});
+    var text = new PIXI.Text(radius > 0 ? circle.operator + radius : circle.operator + "(" + radius + ")", {font: '30px ' + config.style.font, fill: 0xffffff});
     
     displayRadius += text.width;
     
-    text.position.x += displayRadius-text.width/2;
-    text.position.y += displayRadius-text.height/2;
+    text.position.x = -text.width/2;
+    text.position.y = -text.height/2;
     
     var graphics = new PIXI.Graphics();
     graphics.beginFill(color,alpha);
@@ -306,7 +370,7 @@ function performOperation(operator, num1, num2) {
             //Multiply
             return num1*num2;
             break;
-        case "*":
+        case "/":
             //Divide
             return num1/num2;
             break;
@@ -319,15 +383,20 @@ function performOperation(operator, num1, num2) {
 //Current radius and target radius
 var current = 0,
     target = 0,
-    targetText = new PIXI.Text(target,{font: 'bold 35px ' + config.style.font + '', fill: 0xffffff});
+    targetText = new PIXI.Text(target,{font: '35px ' + config.style.font, fill: 0xffffff});
 
 //Start the level
 function generateLevel() {
+    //Level button text
+    levelText.setText(level);
+    levelText.position.set(-levelText.width/2,-levelText.height/2);
+    //Set beginning radius
     current = getRadius();
     do {
         target = getRadius();
     } while(target == current);
     targetText.setText(target);
+    targetText.position.x = (app.view.width-targetText.width)/2;
     
     for(var i=0;i<circles.length;i++) {
         circles[i].active = false;
@@ -353,17 +422,19 @@ function generateLevel() {
     }
 }
 generateLevel();
-
 //Draw hud
-var crosshair = new PIXI.Graphics();
 var radius = Math.min(app.view.width,app.view.height)/8;
-//Circle
-crosshair.beginFill(0x000000,0.5);
-crosshair.lineStyle(5,config.style.baseColor,0.25);
-crosshair.drawCircle(app.view.width/2,app.view.height/2,radius);
-crosshair.endFill();
+//Indicator circle
+var indicator = new PIXI.Graphics();
+indicator.beginFill(0xffffff,0.1);
+indicator.lineStyle(5,config.style.baseColor,0.25);
+indicator.drawCircle(app.view.width/2,app.view.height/2,radius);
+indicator.endFill();
+indicator.alpha = 0.5;
+hud.addChild(indicator);
+var crosshair = new PIXI.Graphics();
 //Inner lines
-crosshair.lineStyle(3,0xffffff,0.5);
+crosshair.lineStyle(2,0xffffff,0.5);
 crosshair.moveTo(app.view.width/2-40,app.view.height/2);
 crosshair.lineTo(app.view.width/2-radius-20,app.view.height/2);
 crosshair.moveTo(app.view.width/2+40,app.view.height/2);
@@ -373,7 +444,7 @@ crosshair.lineTo(app.view.width/2,app.view.height/2-radius-20);
 crosshair.moveTo(app.view.width/2,app.view.height/2+40);
 crosshair.lineTo(app.view.width/2,app.view.height/2+radius+20);
 //Outer lines
-crosshair.lineStyle(3,0xff8888,0.25);
+crosshair.lineStyle(2,0xff8888,0.25);
 crosshair.moveTo(app.view.width/2-radius-30,app.view.height/2);
 crosshair.lineTo(app.view.width/2-radius*2,app.view.height/2);
 crosshair.moveTo(app.view.width/2+radius+30,app.view.height/2);
@@ -390,92 +461,114 @@ hud.addChild(crosshair);
 var panelHeight = Math.min(app.view.width/4,150);
 
 //Top panel
-var topPanel = new PIXI.Graphics();
+var topPanelGraphics = new PIXI.Graphics();
 //Left angle
-topPanel.beginFill(config.style.baseColor,config.style.panelAlpha);
-topPanel.lineStyle(2,0xffffff,1);
-topPanel.moveTo(0,0);
-topPanel.lineTo(app.view.width/2-1.5*panelHeight,panelHeight);
-topPanel.lineTo(app.view.width/2-1.5*panelHeight,0);
-topPanel.endFill();
+topPanelGraphics.beginFill(config.style.baseColor,config.style.panelAlpha);
+topPanelGraphics.lineStyle(2,0xffffff,1);
+topPanelGraphics.moveTo(0,0);
+topPanelGraphics.lineTo(app.view.width/2-1.5*panelHeight,panelHeight);
+topPanelGraphics.lineTo(app.view.width/2-1.5*panelHeight,0);
+topPanelGraphics.endFill();
 //Right angle
-topPanel.beginFill(config.style.baseColor,config.style.panelAlpha);
-topPanel.lineStyle(2,0xffffff,1);
-topPanel.moveTo(app.view.width,0);
-topPanel.lineTo(app.view.width/2+1.5*panelHeight,panelHeight);
-topPanel.lineTo(app.view.width/2+1.5*panelHeight,0);
-topPanel.endFill();
+topPanelGraphics.beginFill(config.style.baseColor,config.style.panelAlpha);
+topPanelGraphics.lineStyle(2,0xffffff,1);
+topPanelGraphics.moveTo(app.view.width,0);
+topPanelGraphics.lineTo(app.view.width/2+1.5*panelHeight,panelHeight);
+topPanelGraphics.lineTo(app.view.width/2+1.5*panelHeight,0);
+topPanelGraphics.endFill();
 //Dial area
-topPanel.beginFill(config.style.topPanelColor,config.style.panelAlpha);
-topPanel.lineStyle(3,0xffffff,1);
-topPanel.moveTo(app.view.width/2-1.5*panelHeight,0);
-topPanel.lineTo(app.view.width/2-1.5*panelHeight,panelHeight);
-topPanel.lineTo(app.view.width/2-panelHeight/2,panelHeight);
-topPanel.lineTo(app.view.width/2-panelHeight/2,0);
+topPanelGraphics.beginFill(config.style.topPanelColor,config.style.panelAlpha);
+topPanelGraphics.lineStyle(2,0xffffff,1);
+topPanelGraphics.moveTo(app.view.width/2-1.5*panelHeight,0);
+topPanelGraphics.lineTo(app.view.width/2-1.5*panelHeight,panelHeight);
+topPanelGraphics.lineTo(app.view.width/2-panelHeight/2,panelHeight);
+topPanelGraphics.lineTo(app.view.width/2-panelHeight/2,0);
+topPanelGraphics.endFill();
 //Level area
-topPanel.lineTo(app.view.width/2+panelHeight/2,0);
-topPanel.lineTo(app.view.width/2+panelHeight/2,panelHeight);
-topPanel.lineTo(app.view.width/2+1.5*panelHeight,panelHeight);
-topPanel.lineTo(app.view.width/2+1.5*panelHeight,0);
-topPanel.endFill();
+topPanelGraphics.lineTo(app.view.width/2+panelHeight/2,0);
+topPanelGraphics.lineTo(app.view.width/2+panelHeight/2,panelHeight);
+topPanelGraphics.lineTo(app.view.width/2+1.5*panelHeight,panelHeight);
+topPanelGraphics.lineTo(app.view.width/2+1.5*panelHeight,0);
+topPanelGraphics.endFill();
+//Dial
+topPanelGraphics.beginFill(0x000000,0.5);
+topPanelGraphics.lineStyle(2,0x000000,0.5);
+topPanelGraphics.drawCircle((app.view.width-2*panelHeight)/2,panelHeight/2,panelHeight/4);
+topPanelGraphics.endFill();
 //Target box
-topPanel.beginFill(0x000000,config.style.panelAlpha);
-topPanel.lineStyle(3,0xffffff,1);
-topPanel.drawRect(app.view.width/2-panelHeight/2,0,panelHeight,panelHeight);
-topPanel.endFill();
+topPanelGraphics.beginFill(0x000000,config.style.panelAlpha);
+topPanelGraphics.lineStyle(2,0xffffff,1);
+topPanelGraphics.drawRect(app.view.width/2-panelHeight/2,0,panelHeight,panelHeight);
+topPanelGraphics.endFill();
+
+var topPanel = new PIXI.Sprite();
+topPanel.texture = topPanelGraphics.generateTexture();
 
 panels.addChild(topPanel);
 
 //Target label
-var targetLabel = new PIXI.Text("Get to",{font: 'bold 20px ' + config.style.font + '', fill: 0x888888});
+var targetLabel = new PIXI.Text("Get to",{font: '20px ' + config.style.font, fill: 0x888888});
 targetLabel.position.x = (app.view.width-targetLabel.width)/2;
 targetLabel.position.y = 10;
 panels.addChild(targetLabel);
 //Target text
-targetText.position.x = (app.view.width-targetText.width)/2;
 targetText.position.y = targetLabel.height+(panelHeight-targetLabel.height-targetText.height)/2;
 
 panels.addChild(targetText);
 
 //Bottom panel
-var bottomPanel = new PIXI.Graphics();
+var bottomPanelGraphics = new PIXI.Graphics();
 //Left angle
-bottomPanel.beginFill(config.style.baseColor,config.style.panelAlpha);
-bottomPanel.lineStyle(2,0xffffff,1);
-bottomPanel.moveTo(0,app.view.height);
-bottomPanel.lineTo(app.view.width/2-1.5*panelHeight,app.view.height-panelHeight);
-bottomPanel.lineTo(app.view.width/2-1.5*panelHeight,app.view.height);
-bottomPanel.endFill();
+bottomPanelGraphics.beginFill(config.style.baseColor,config.style.panelAlpha);
+bottomPanelGraphics.lineStyle(2,0xffffff,1);
+bottomPanelGraphics.moveTo(0,app.view.height);
+bottomPanelGraphics.lineTo(app.view.width/2-1.5*panelHeight,app.view.height-panelHeight);
+bottomPanelGraphics.lineTo(app.view.width/2-1.5*panelHeight,app.view.height);
+bottomPanelGraphics.endFill();
 //Right angle
-bottomPanel.beginFill(config.style.baseColor,config.style.panelAlpha);
-bottomPanel.lineStyle(2,0xffffff,1);
-bottomPanel.moveTo(app.view.width,app.view.height);
-bottomPanel.lineTo(app.view.width/2+1.5*panelHeight,app.view.height-panelHeight);
-bottomPanel.lineTo(app.view.width/2+1.5*panelHeight,app.view.height);
-bottomPanel.endFill();
+bottomPanelGraphics.beginFill(config.style.baseColor,config.style.panelAlpha);
+bottomPanelGraphics.lineStyle(2,0xffffff,1);
+bottomPanelGraphics.moveTo(app.view.width,app.view.height);
+bottomPanelGraphics.lineTo(app.view.width/2+1.5*panelHeight,app.view.height-panelHeight);
+bottomPanelGraphics.lineTo(app.view.width/2+1.5*panelHeight,app.view.height);
+bottomPanelGraphics.endFill();
 //Shoot button area
-bottomPanel.beginFill(config.style.bottomPanelColor,config.style.panelAlpha);
-bottomPanel.lineStyle(2,0xffffff,1);
-bottomPanel.moveTo(app.view.width/2-1.5*panelHeight,app.view.height);
-bottomPanel.lineTo(app.view.width/2-1.5*panelHeight,app.view.height-panelHeight);
-bottomPanel.lineTo(app.view.width/2-panelHeight/2,app.view.height-panelHeight);
-bottomPanel.lineTo(app.view.width/2-panelHeight/2,app.view.height);
+bottomPanelGraphics.beginFill(config.style.bottomPanelColor,config.style.panelAlpha);
+bottomPanelGraphics.lineStyle(2,0xffffff,1);
+bottomPanelGraphics.moveTo(app.view.width/2-1.5*panelHeight,app.view.height);
+bottomPanelGraphics.lineTo(app.view.width/2-1.5*panelHeight,app.view.height-panelHeight);
+bottomPanelGraphics.lineTo(app.view.width/2-panelHeight/2,app.view.height-panelHeight);
+bottomPanelGraphics.lineTo(app.view.width/2-panelHeight/2,app.view.height);
 //Joystick area
-bottomPanel.lineTo(app.view.width/2+panelHeight/2,app.view.height);
-bottomPanel.lineTo(app.view.width/2+panelHeight/2,app.view.height-panelHeight);
-bottomPanel.lineTo(app.view.width/2+1.5*panelHeight,app.view.height-panelHeight);
-bottomPanel.lineTo(app.view.width/2+1.5*panelHeight,app.view.height);
-bottomPanel.endFill();
+bottomPanelGraphics.lineTo(app.view.width/2+panelHeight/2,app.view.height);
+bottomPanelGraphics.lineTo(app.view.width/2+panelHeight/2,app.view.height-panelHeight);
+bottomPanelGraphics.lineTo(app.view.width/2+1.5*panelHeight,app.view.height-panelHeight);
+bottomPanelGraphics.lineTo(app.view.width/2+1.5*panelHeight,app.view.height);
+bottomPanelGraphics.endFill();
+//Left bottom
+bottomPanelGraphics.beginFill(0x000000,0.5);
+bottomPanelGraphics.lineStyle(2,0x000000,0.5);
+bottomPanelGraphics.drawCircle((app.view.width-2*panelHeight-1)/2,app.view.height-(panelHeight+1)/2,panelHeight/4);
+bottomPanelGraphics.endFill();
+//Right bottom
+bottomPanelGraphics.beginFill(0x000000,0.5);
+bottomPanelGraphics.lineStyle(2,0x000000,0.5);
+bottomPanelGraphics.drawCircle((app.view.width+2*panelHeight)/2,app.view.height-panelHeight/2,panelHeight/4);
+bottomPanelGraphics.endFill();
 //Minimap
-bottomPanel.beginFill(0x000000,1);
-bottomPanel.lineStyle(2,0xffffff,1);
-bottomPanel.drawRect(app.view.width/2-panelHeight/2,app.view.height-panelHeight,panelHeight,panelHeight);
-bottomPanel.endFill();
+bottomPanelGraphics.beginFill(0x000000,1);
+bottomPanelGraphics.lineStyle(2,0xffffff,1);
+bottomPanelGraphics.drawRect(app.view.width/2-panelHeight/2,app.view.height-panelHeight,panelHeight,panelHeight);
+bottomPanelGraphics.endFill();
+
+var bottomPanel = new PIXI.Sprite();
+bottomPanel.position.y = app.view.height-panelHeight;
+bottomPanel.texture = bottomPanelGraphics.generateTexture();
 
 panels.addChild(bottomPanel);
 
 //Current radius text
-var currentText = new PIXI.Text(current,{font: 'bold 30px ' + config.style.font + '', fill: 0xffffff});
+var currentText = new PIXI.Text(current,{font: '30px ' + config.style.font, fill: 0xffffff});
 function updateCurrent() {
     currentText.setText(current);
     currentText.position.set((app.view.width-currentText.width)/2,(app.view.height-currentText.height)/2);
@@ -483,35 +576,33 @@ function updateCurrent() {
 updateCurrent();
 hud.addChild(currentText);
 
-//Dials
-var dials = new PIXI.Graphics();
-//Left top
-dials.beginFill(0x000000,0.5);
-dials.lineStyle(2,0x000000,0.5);
-dials.drawCircle((app.view.width-2*panelHeight)/2,panelHeight/2,panelHeight/4);
-dials.endFill();
-//Right top
-dials.beginFill(0x000000,0.5);
-dials.lineStyle(2,0x000000,0.5);
-dials.drawCircle((app.view.width+2*panelHeight)/2,panelHeight/2,panelHeight/4);
-dials.endFill();
-//Left bottom
-dials.beginFill(0xffffff,0.5);
-dials.lineStyle(2,0x000000,0.5);
-dials.drawCircle((app.view.width-2*panelHeight)/2,app.view.height-panelHeight/2,panelHeight/4);
-dials.endFill();
-//Right bottom
-dials.beginFill(0x00ff00,0.5);
-dials.lineStyle(2,0x000000,0.5);
-dials.drawCircle((app.view.width+2*panelHeight)/2,app.view.height-panelHeight/2,panelHeight/4);
-dials.endFill();
+//Level button
+var levelButton = new PIXI.Sprite();
+levelButton.position.set((app.view.width+2*panelHeight)/2,panelHeight/2);
+levelButton.anchor.set(0.5);
+//Text for button
+levelButton.addChild(levelText);
+//Graphics for button
+var levelGraphics = new PIXI.Graphics();
+levelGraphics.beginFill(0x000000,0.5);
+levelGraphics.lineStyle(2,0x000000,0.5);
+levelGraphics.drawCircle(0,0,panelHeight/4);
+levelGraphics.endFill();
 
-panels.addChild(dials);
+levelButton.texture = levelGraphics.generateTexture();
+
+levelButton.interactive = true;
+levelButton.on('pointerdown',function() {
+    menuBox.fadeOut = false;
+});
+
+panels.addChild(levelButton);
+
 
 //Shoot button graphic
 var buttonGraphics = new PIXI.Graphics();
 buttonGraphics.beginFill(0xff0000);
-buttonGraphics.lineStyle(3,0x000000,0.5);
+buttonGraphics.lineStyle(2,0x000000,0.5);
 buttonGraphics.drawCircle(0,0,panelHeight/4);
 buttonGraphics.endFill();
 
@@ -529,10 +620,12 @@ shootButton.on('pointerdown',function() {
     shoot();
 }).on('pointerup',function() {
     shootButton.scale.set(1);
+}).on('pointerupoutside',function() {
+    shootButton.scale.set(1);
 });
 
 //Text for button
-var buttonText = new PIXI.Text("Shoot!",{font: 'bold 15px ' + config.style.font, fill: 0x000000});
+var buttonText = new PIXI.Text("Shoot!",{font: '15px ' + config.style.font, fill: 0x000000});
 buttonText.position.set(-buttonText.width/2,-buttonText.height/2);
 
 shootButton.addChild(buttonText);
@@ -541,7 +634,7 @@ panels.addChild(shootButton);
 //Joystick graphic
 var joystickGraphic = new PIXI.Graphics();
 joystickGraphic.beginFill(0x00ff00);
-joystickGraphic.lineStyle(3,0x000000,0.5);
+joystickGraphic.lineStyle(2,0x000000,0.5);
 joystickGraphic.drawCircle(0,0,panelHeight/4);
 joystickGraphic.endFill();
 
@@ -582,28 +675,192 @@ function endMove() {
 
 panels.addChild(joystick);
 
+//Menu box
+var menuBox = new PIXI.Sprite();
+var menuBoxGraphics = new PIXI.Graphics();
+menuBoxGraphics.beginFill(config.style.baseColor,0.25);
+menuBoxGraphics.lineStyle(1,0xffffff);
+menuBoxGraphics.drawRect(app.view.width/2-1.5*panelHeight,panelHeight,3*panelHeight,app.view.height-2*panelHeight);
+menuBoxGraphics.endFill();
+menuBoxGraphics.beginFill(0x000000,0.95);
+menuBoxGraphics.drawRect(app.view.width/2-1.5*panelHeight+20,panelHeight+20,3*panelHeight-40,app.view.height-2*panelHeight-40);
+menuBoxGraphics.endFill();
+menuBoxGraphics.moveTo(app.view.width/2-1.5*panelHeight+20,panelHeight*2);
+menuBoxGraphics.lineTo(app.view.width/2+1.5*panelHeight-20,panelHeight*2);
+
+//Menu box title
+var title = new PIXI.Text("Galactic Math",{font: '35px ' + config.style.font, fill: [0x880000,0x884444], stroke: 0xffffff, strokeThickness: 2});
+title.position.x = panelHeight*1.5-title.width/2;
+title.position.y = panelHeight*0.5-10;
+title.alpha = 0.75;
+
+//Title rocket
+var decoRocket = new PIXI.Sprite.fromImage('img/rocket.png');
+decoRocket.width = 66;
+decoRocket.height = 99;
+decoRocket.tint = 0x888888;
+decoRocket.anchor.set(0.5);
+decoRocket.position.set(panelHeight*1.5,0.5*panelHeight+5);
+decoRocket.rotation = Math.PI/3;
+decoRocket.alpha = 0.5;
+
+menuBox.addChild(decoRocket);
+
+menuBox.addChild(title);
+
+menuBox.texture = menuBoxGraphics.generateTexture();
+
+menuBox.position.x = app.view.width/2-1.5*panelHeight;
+menuBox.position.y = panelHeight;
+
+hud.addChild(menuBox);
+
+menuBox.alpha = 1;
+menuBox.visible = true;
+menuBox.fadeOut = false;
+
+//Levels
+var levels = [];
+var levelPane = new PIXI.Container();
+levelPane.position.set(20,panelHeight);
+
+function selectLevel() {
+    level = this.level;
+    generateLevel();
+    menuBox.fadeOut = true;
+    this.alpha = 0.5;
+}
+
+function endSelect() {
+    this.alpha = 1;
+}
+
+
+for(var i=0;i<config.levels.length;i++) {
+    levels.push(new PIXI.Sprite());
+    var graphics = new PIXI.Graphics();
+    graphics.beginFill(Math.floor(Math.random()*0x111111), 0.25);
+    graphics.lineStyle(1,0xffffff);
+    var rowHeight = (app.view.height-3*panelHeight-20)/config.levels.length;
+    graphics.drawRect(0,0,3*panelHeight-40,rowHeight);
+    graphics.endFill();
+    levels[i].y = i*rowHeight;
+    levels[i].interactive = true;
+    levels[i].buttonMode = true;
+    levels[i].level = i+1;
+    levelPane.addChild(levels[i]);
+    var text = new PIXI.Text("Level " + (i+1),{font: '20px ' + config.style.font, fill: 0xffffff});
+    text.position.set(20,(rowHeight-text.height)/2);
+    graphics.addChild(text);
+    var text2 = new PIXI.Text(config.levels[i].description,{font: '15px ' + config.style.font, fill: 0xffffff, wordWrap: true, wordWrapWidth: 1.5*panelHeight});
+    text2.alpha = 0.5;
+    text2.position.set(3*panelHeight-40-text2.width-20,(rowHeight-text2.height)/2);
+    graphics.addChild(text2);
+    levels[i].texture = graphics.generateTexture();
+    levels[i]
+        .on('pointerdown',selectLevel)
+    .on('pointerup',endSelect)
+    .on('pointerupoutside',endSelect);
+}
+
+menuBox.addChild(levelPane);
+
 //List of circles currently colliding with the crosshair
 var collidingCircles = [];
 
 //Shoot
 function shoot() {
+    //All colliding circles
     for(var i=0;i<collidingCircles.length;i++) {
         if(collidingCircles[i].active) {
             current = performOperation(collidingCircles[i].operator,current,collidingCircles[i].radius);
             collidingCircles[i].active = false;
         }
     }
+    indicator.alpha = 1;
     updateCurrent();
+    if(getDistance(rocket.position.x,rocket.position.y,camera.x+app.view.width/2,camera.y+app.view.height/2) < radius) {
+        //Hit the rocket
+        menuBox.fadeOut = false;
+    }
 }
+
+var pulse = true;
 
 //Update everything
 function update() {
     
+    if(!menuBox.fadeOut) {
+        menuBox.visible = true;
+        if(menuBox.alpha < 1) {
+            menuBox.alpha += 0.05;
+        }
+        main.filters = [blurFilter];
+        if(blurFilter.blur < 10) {
+            blurFilter.blur += 0.5;
+        }
+        //Rocket pulse for menu
+        if(pulse) {
+            decoRocket.scale.set(decoRocket.scale.x*1.01);
+        } else {
+            decoRocket.scale.set(decoRocket.scale.x*0.99);
+        }
+    } else {
+        if(menuBox.alpha > 0) {
+            menuBox.alpha -= 0.05;
+        } else {
+            menuBox.visible = false;
+        }
+        if(blurFilter.blur > 0) {
+            blurFilter.blur -= 0.5;
+        } else {
+            main.filters = [];
+        }
+    }
+
+
+    if(decoRocket.scale.x > 0.2) {
+        pulse = false;
+    } else if(decoRocket.scale.x < 0.1) {
+        pulse = true;
+    }
+
     //Shoot
     if(keysDown.includes(32)) {
         shoot();
     }
     
+    //Fade back
+    if(indicator.alpha > 0.5) {
+        indicator.alpha *= 0.95;
+    }
+
+    //Update timers
+    for(var i=0;i<timers.length;i++) {
+        timers[i].update();
+        if(!timers[i].active) {
+            timers.splice(i,1);
+        }
+    }
+
+    //Update rocket
+    if(rocket.active) {
+        rocket.position.x += rocket.velocityX;
+        rocket.position.y += rocket.velocityY;
+        //Culling and respawning
+        if(inView(rocket.x,rocket.y-rocket.height/2,rocket.height,rocket.height)) {
+            rocket.visible = true;
+        } else {
+            rocket.visible = false;
+            if(rocket.active && (rocket.x+rocket.height/2<0||rocket.x-rocket.height/2>fieldSize||rocket.y+rocket.height/2<0||rocket.y-rocket.height/2>fieldSize)) {
+                rocket.active = false;
+                timers.push(new Timer(Math.random()*Math.random()*10,function() {
+                    resetRocket();
+                }));
+            }
+        }
+    }
+
     //Move
     camera.velocity.x += (basePosition[0]-joystick.position.x)*config.control.sensitivity;
     camera.velocity.y += (basePosition[1]-joystick.position.y)*config.control.sensitivity;
@@ -613,6 +870,10 @@ function update() {
     
     //Update circles
     for(var i=0;i<circles.length;i++) {
+        //Fade in
+        if(circles[i].scale.x < 1) {
+            circles[i].scale.set(circles[i].scale.x+=0.01);
+        }
         //Apply velocity
         circles[i].x += circles[i].velocityX;
         circles[i].y += circles[i].velocityY;
@@ -633,7 +894,7 @@ function update() {
                 circles[i].visible = true;
             }
             //Collision detection
-            if(getDistance(app.view.width/2,app.view.height/2,(circles[i].x+circles[i].width/2)+camera.x,(circles[i].y+circles[i].height/2)+camera.y) < radius + circles[i].width/2) {
+            if(getDistance(app.view.width/2,app.view.height/2,circles[i].x+camera.x,circles[i].y+camera.y) < radius + circles[i].width/2) {
                 if(!collidingCircles.includes(circles[i])) {
                     collidingCircles.push(circles[i]);
                     circles[i].tint = 0x888888;
@@ -662,11 +923,7 @@ function update() {
             } else {
                 //Decrease opacity
                 circles[i].alpha *= 0.9;
-                circles[i].position.x += circles[i].width/2;
-                circles[i].position.y += circles[i].height/2;
                 circles[i].scale.set(0.95*circles[i].scale.x);
-                circles[i].position.x -= circles[i].width/2;
-                circles[i].position.y -= circles[i].height/2;
             }
         }
     }
