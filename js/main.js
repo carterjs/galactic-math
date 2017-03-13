@@ -8,7 +8,7 @@ var config = {
     },
     "control":{
         //Scale factor for joystick movement
-        "sensitivity":0.03,
+        "sensitivity":0.01,
         "friction":0.95
     },
     "levels":[
@@ -276,6 +276,7 @@ function resetRocket() {
     rocket.rotation = angle-Math.PI/2;
     rocket.active = true;
     rocket.visible = false;
+    rocket.scale.set(0);
 }
 resetRocket();
 
@@ -790,6 +791,7 @@ var pulse = true;
 //Update everything
 function update() {
     
+    //Fade in and out
     if(!menuBox.fadeOut) {
         menuBox.visible = true;
         if(menuBox.alpha < 1) {
@@ -805,6 +807,11 @@ function update() {
         } else {
             decoRocket.scale.set(decoRocket.scale.x*0.99);
         }
+        if(decoRocket.scale.x > 0.2) {
+            pulse = false;
+        } else if(decoRocket.scale.x < 0.1) {
+            pulse = true;
+        }
     } else {
         if(menuBox.alpha > 0) {
             menuBox.alpha -= 0.05;
@@ -818,11 +825,9 @@ function update() {
         }
     }
 
-
-    if(decoRocket.scale.x > 0.2) {
-        pulse = false;
-    } else if(decoRocket.scale.x < 0.1) {
-        pulse = true;
+    //Scale in rocket
+    if(rocket.scale.x < 0.5) {
+        rocket.scale.set(rocket.scale.x+0.01);
     }
 
     //Shoot
@@ -851,12 +856,15 @@ function update() {
         if(inView(rocket.x,rocket.y-rocket.height/2,rocket.height,rocket.height)) {
             rocket.visible = true;
         } else {
-            rocket.visible = false;
             if(rocket.active && (rocket.x+rocket.height/2<0||rocket.x-rocket.height/2>fieldSize||rocket.y+rocket.height/2<0||rocket.y-rocket.height/2>fieldSize)) {
-                rocket.active = false;
-                timers.push(new Timer(Math.random()*Math.random()*10,function() {
-                    resetRocket();
-                }));
+                if(rocket.scale.x < 0.1) {
+                    rocket.active = false;
+                    timers.push(new Timer(Math.random()*Math.random()*10,function() {
+                        resetRocket();
+                    }));
+                } else {
+                    rocket.scale.set(rocket.scale.x-0.05);
+                }
             }
         }
     }
