@@ -8,7 +8,7 @@ var config = {
     },
     "control":{
         //Scale factor for joystick movement
-        "sensitivity":0.01,
+        "sensitivity":0.02,
         "friction":0.95
     },
     "levels":[
@@ -636,14 +636,14 @@ panels.addChild(shootButton);
 var joystickGraphic = new PIXI.Graphics();
 joystickGraphic.beginFill(0x00ff00);
 joystickGraphic.lineStyle(2,0x000000,0.5);
-joystickGraphic.drawCircle(0,0,panelHeight/4);
+joystickGraphic.drawCircle(0,0,panelHeight/5);
 joystickGraphic.endFill();
 
 //Joystick
 var joystick = new PIXI.Sprite();
 joystick.anchor.set(0.5);
 joystick.texture = joystickGraphic.generateTexture();
-var basePosition = [(app.view.width+2*panelHeight)/2,app.view.height-panelHeight/2];
+var basePosition = [(app.view.width+2*panelHeight+1)/2,app.view.height-panelHeight/2+1];
 joystick.position.set(basePosition[0],basePosition[1]);
 joystick.interactive = true;
 joystick.buttonMode = true;
