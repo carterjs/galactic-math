@@ -16,35 +16,35 @@ var config = {
             "description":"Addition and Subtraction",
             "operators":["+","-"],
             "population":20,
-            "range":55
+            "range":10
             
         },
         {
             "description":"Addition and Subtraction",
             "operators":["+","-"],
-            "population":15,
-            "range":65
+            "population":35,
+            "range":20
             
         },
         {
             "description":"Addition, Subtraction, Multiplication, and Division",
             "operators":["+","-","*","/"],
-            "population":25,
-            "range":75
+            "population":30,
+            "range":30
             
         },
         {
             "description":"Addition, Subtraction, Multiplication, and Division",
             "operators":["+","-","*","/"],
-            "population":25,
-            "range":85
+            "population":35,
+            "range":50
             
         },
         {
             "description":"Multiplication and Division",
             "operators":["*","/"],
-            "population":15,
-            "range":95
+            "population":40,
+            "range":99
             
         }
     ]
@@ -60,6 +60,10 @@ document.getElementById('main').appendChild(app.view);
 var main = new PIXI.Container();
 main.pivot.set(0.5);
 app.stage.addChild(main);
+
+var secondary = new PIXI.Container();
+secondary.pivot.set(0.5);
+main.addChild(secondary);
 
 //Hud (fixed position)
 var hud = new PIXI.Container();
@@ -258,7 +262,35 @@ Timer.prototype.update = function() {
         this.active = false;
     }
 }
-timers.push(new Timer(3000,function() {console.log("What up bro!")}));
+
+//Particles
+var particles = [];
+var Particle = function(x,y,velocityX,velocityY,radius,color,lifespan) {
+        this.velocityX = velocityX,
+        this.velocityY = velocityY,
+        this.radius = radius,
+        this.lifespan = lifespan,
+        this.startTime = Date.now(),
+        this.endTime = Date.now()+lifespan,
+        this.body = new PIXI.Graphics(),
+        this.active = true;
+    this.body.beginFill(color,0.5);
+    this.body.lineStyle(0);
+    this.body.drawCircle(x,y,radius);
+    this.body.endFill();
+    secondary.addChild(this.body);
+}
+Particle.prototype.update = function() {
+    this.body.position.x += this.velocityX;
+    this.body.position.y += this.velocityY;
+    var now = Date.now();
+    var progress = (this.endTime-now)/this.lifespan;
+    if(now < this.endTime) {
+        this.body.alpha = progress;
+    } else {
+        this.active = false;
+    }
+}
 
 //Rocket
 var rocket = new PIXI.Sprite.fromImage('img/rocket.png');
@@ -848,8 +880,18 @@ function update() {
         }
     }
 
+    //Update particles
+    for(var i=0;i<particles.length;i++) {
+        particles[i].update();
+        if(!particles[i].active) {
+            secondary.removeChild(particles[i].body);
+            particles.splice(i,1);
+        }
+    }
+    
     //Update rocket
     if(rocket.active) {
+        particles.push(new Particle(rocket.x,rocket.y,Math.random()-0.5,Math.random()-0.5,Math.random()*10+10,Math.floor(Math.random()*0xffffff),500));
         rocket.position.x += rocket.velocityX;
         rocket.position.y += rocket.velocityY;
         //Culling and respawning
@@ -859,7 +901,7 @@ function update() {
             if(rocket.active && (rocket.x+rocket.height/2<0||rocket.x-rocket.height/2>fieldSize||rocket.y+rocket.height/2<0||rocket.y-rocket.height/2>fieldSize)) {
                 if(rocket.scale.x < 0.1) {
                     rocket.active = false;
-                    timers.push(new Timer(Math.random()*Math.random()*10,function() {
+                    timers.push(new Timer(Math.random()*Math.random()*10000,function() {
                         resetRocket();
                     }));
                 } else {
