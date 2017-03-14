@@ -4,7 +4,8 @@ var config = {
         "bottomPanelColor":0x44ffff,
         "baseColor": 0xff0000,
         "panelAlpha":0.5,
-        "font":"Quantico"
+        "font":"Impact, Verdana",
+		"smallFont":"Verdana, Arial, sans-serif"
     },
     "control":{
         //Scale factor for joystick movement
@@ -746,11 +747,51 @@ menuBox.texture = menuBoxGraphics.generateTexture();
 menuBox.position.x = app.view.width/2-1.5*panelHeight;
 menuBox.position.y = panelHeight;
 
+var button = new PIXI.Sprite();
+var buttonGraphics = new PIXI.Graphics();
+buttonGraphics.beginFill(0x00ff00,0.25);
+buttonGraphics.lineStyle(1,0xffffff,1);
+buttonGraphics.drawRect(0,0,3*panelHeight-40,panelHeight/2);
+buttonGraphics.endFill();
+
+var buttonText = new PIXI.Text("Next",{font: '20px ' + config.style.font,fill: 0xffffff});
+buttonText.position.set((3*panelHeight-buttonText.width-40)/2,0.25*panelHeight-buttonText.height/2);
+button.addChild(buttonText);
+
+button.texture = buttonGraphics.generateTexture();
+button.position.set(20,app.view.height-2.5*panelHeight-20);
+button.interactive = true;
+button.buttonMode = true;
+
+button.on('pointerdown',toggleButton);
+function toggleButton() {
+	if(levelPane.visible) {
+		changePane(1);
+		buttonText.setText("Levels");
+		buttonText.position.x = (3*panelHeight-buttonText.width-40)/2;
+	} else {
+		changePane(0);
+		buttonText.setText("Directions");
+		buttonText.position.x = (3*panelHeight-buttonText.width-40)/2;
+	}
+}
+
+menuBox.addChild(button);
+
 hud.addChild(menuBox);
 
 menuBox.alpha = 1;
 menuBox.visible = true;
 menuBox.fadeOut = false;
+
+//Changing panes
+var panes = [],
+	index = 0;
+function changePane(newIndex) {
+	panes[index].visible = false;
+	index = newIndex;
+	panes[index].visible = true;
+}
 
 //Levels
 var levels = [];
@@ -768,13 +809,24 @@ function endSelect() {
     this.alpha = 1;
 }
 
+//Changing panes
+var panes = [],
+	index = 1;
+function changePane(newIndex) {
+	console.log("Going from " + index + " to " + newIndex);
+	panes[index].visible = false;
+	index = newIndex;
+	panes[index].visible = true;
+}
 
+var rowHeight = (app.view.height-3.5*panelHeight-20)/config.levels.length;
+
+//Level pane
 for(var i=0;i<config.levels.length;i++) {
     levels.push(new PIXI.Sprite());
     var graphics = new PIXI.Graphics();
     graphics.beginFill(Math.floor(Math.random()*0x111111), 0.25);
     graphics.lineStyle(1,0xffffff);
-    var rowHeight = (app.view.height-3*panelHeight-20)/config.levels.length;
     graphics.drawRect(0,0,3*panelHeight-40,rowHeight);
     graphics.endFill();
     levels[i].y = i*rowHeight;
@@ -785,7 +837,7 @@ for(var i=0;i<config.levels.length;i++) {
     var text = new PIXI.Text("Level " + (i+1),{font: '20px ' + config.style.font, fill: 0xffffff});
     text.position.set(20,(rowHeight-text.height)/2);
     graphics.addChild(text);
-    var text2 = new PIXI.Text(config.levels[i].description,{font: '15px ' + config.style.font, fill: 0xffffff, wordWrap: true, wordWrapWidth: 1.5*panelHeight});
+    var text2 = new PIXI.Text(config.levels[i].description,{font: '15px ' + config.style.smallFont, fill: 0xffffff, wordWrap: true, wordWrapWidth: 1.5*panelHeight});
     text2.alpha = 0.5;
     text2.position.set(3*panelHeight-40-text2.width-20,(rowHeight-text2.height)/2);
     graphics.addChild(text2);
@@ -796,13 +848,27 @@ for(var i=0;i<config.levels.length;i++) {
     .on('pointerupoutside',endSelect);
 }
 
+levelPane.visible = false;
+panes.push(levelPane);
 menuBox.addChild(levelPane);
+
+var directionsPane = new PIXI.Container();
+var directionsGraphics = new PIXI.Graphics();
+directionsGraphics.beginFill(0,0.25);
+directionsGraphics.lineStyle(0);
+directionsGraphics.drawRect(20,panelHeight,3*panelHeight-40,app.view.height-3*panelHeight-20);
+directionsGraphics.endFill();
+
+directionsPane.addChild(directionsGraphics);
+menuBox.addChild(directionsPane);
+panes.push(directionsPane);
 
 //List of circles currently colliding with the crosshair
 var collidingCircles = [];
 
 //Shoot
 function shoot() {
+	changePane(1);
     //All colliding circles
     for(var i=0;i<collidingCircles.length;i++) {
         if(collidingCircles[i].active) {
