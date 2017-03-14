@@ -54,7 +54,7 @@ var config = {
 //Renderer
 var width = document.body.scrollWidth;
 var height = document.body.scrollHeight;
-var app = new PIXI.Application(width,height,{backgroundColor: 0x000000, antialias: true});
+var app = new PIXI.Application(width,height,{backgroundColor: 0x000000,antialias: true});
 document.getElementById('main').appendChild(app.view);
 
 //Main elements (offset by camera)
@@ -62,6 +62,7 @@ var main = new PIXI.Container();
 main.pivot.set(0.5);
 app.stage.addChild(main);
 
+//Secondary elements (below main layer)
 var secondary = new PIXI.Container();
 secondary.pivot.set(0.5);
 main.addChild(secondary);
@@ -69,6 +70,14 @@ main.addChild(secondary);
 //Hud (fixed position)
 var hud = new PIXI.Container();
 app.stage.addChild(hud);
+
+//Panels
+var panels = new PIXI.Container();
+app.stage.addChild(panels);
+
+//MiniMap
+var minimap = new PIXI.Container();
+panels.addChild(minimap);
 
 var border = new PIXI.Sprite.fromImage('img/border.png');
 border.width = app.view.width;
@@ -79,10 +88,6 @@ hud.addChild(border);
 function getDistance(x1,y1,x2,y2) {
     return Math.sqrt(Math.pow(y2-y1,2)+Math.pow(x2-x1,2));
 }
-
-//Panels
-var panels = new PIXI.Container();
-app.stage.addChild(panels);
 
 //Key events
 var keysTracked = [87,38,65,37,83,40,68,39,32];
@@ -347,10 +352,14 @@ function getRadius(operator) {
 }
 
 //Create circles
-var circles = [];
+var circles = [],
+	simpleCircles = [],
+	panelHeight = Math.min(app.view.width/4,150);
+
 function createCircle() {
     
     var circle = new PIXI.Sprite(),
+		simpleCircle = new PIXI.Sprite(),
         operators = config.levels[level-1].operators,
         operator = operators[Math.floor(Math.random()*operators.length)],
         range = Math.random()*config.levels[level-1].range,
@@ -383,12 +392,20 @@ function createCircle() {
     graphics.endFill();
     
     circle.texture = graphics.generateTexture();
+	simpleCircle.texture = graphics.generateTexture();
     
     circle.addChild(text);
     
     main.addChild(circle);
+
+	simpleCircle.position.x = circle.position.x*(panelHeight/fieldSize);
+	simpleCircle.position.y = circle.position.y*(panelHeight/fieldSize);
+	simpleCircle.anchor.set(0.5);
+	simpleCircle.scale.set(panelHeight/fieldSize*2);
+	minimap.addChild(simpleCircle);
     
-    return circle;
+    circles.push(circle);
+	simpleCircles.push(simpleCircle);
     
 }
 
@@ -453,7 +470,7 @@ function generateLevel() {
         console.log("Level " + level + " - " + description);
         //Generate circles
         for(var i=0;i<population;i++) {
-            circles.push(createCircle());
+            createCircle();
         }
     } else {
         //Level out of range
@@ -503,7 +520,24 @@ crosshair.alpha = 0.5;
 
 hud.addChild(crosshair);
 
-var panelHeight = Math.min(app.view.width/4,150);
+//Position minimap
+minimap.width = panelHeight;
+minimap.height = panelHeight;
+minimap.position.set(app.view.width/2-panelHeight/2,app.view.height-panelHeight+5);
+
+var xCross = new PIXI.Graphics()
+xCross.lineStyle(2,config.style.baseColor,0.5);
+xCross.moveTo((camera.x+app.view.width/2)*(panelHeight/fieldSize),0);
+xCross.lineTo((camera.x+app.view.width/2)*(panelHeight/fieldSize),fieldSize*(panelHeight/fieldSize));
+
+minimap.addChild(xCross);
+
+var yCross = new PIXI.Graphics();
+yCross.lineStyle(1,config.style.baseColor,0.5);
+yCross.moveTo(0,(camera.y+app.view.height/2)*(panelHeight/fieldSize));
+yCross.lineTo((fieldSize)*(panelHeight/fieldSize),(camera.y+app.view.height/2)*(panelHeight/fieldSize));
+
+minimap.addChild(yCross);
 
 //Top panel
 var topPanelGraphics = new PIXI.Graphics();
@@ -601,7 +635,7 @@ bottomPanelGraphics.lineStyle(2,0x000000,0.5);
 bottomPanelGraphics.drawCircle((app.view.width+2*panelHeight)/2,app.view.height-panelHeight/2,panelHeight/4);
 bottomPanelGraphics.endFill();
 //Minimap
-bottomPanelGraphics.beginFill(0x000000,1);
+bottomPanelGraphics.beginFill(0x000000,0.1);
 bottomPanelGraphics.lineStyle(2,0xffffff,1);
 bottomPanelGraphics.drawRect(app.view.width/2-panelHeight/2,app.view.height-panelHeight,panelHeight,panelHeight);
 bottomPanelGraphics.endFill();
@@ -634,6 +668,7 @@ levelButton.interactive = true;
 levelButton.on('pointerdown',function() {
 	fadeIn.push(menuBox);
     menuBox.active = true;
+	toggleButton();
 });
 
 panels.addChild(levelButton);
@@ -800,6 +835,7 @@ levelPane.position.set(20,panelHeight);
 function selectLevel() {
     level = this.level;
     generateLevel();
+	toggleButton();
     menuBox.active = false;
 	fadeOut.push(menuBox);
     this.alpha = 0.5;
@@ -814,7 +850,6 @@ var panes = [],
 	index = 1;
 function changePane(newIndex) {
 	if(fadeOut.indexOf(panes[index] < 0 && fadeIn.indexOf(panes[index])) < 0 && fadeOut.indexOf(panels[newIndex]) < 0 && fadeIn.indexOf(panels[newIndex]) < 0) {
-		console.log("Going from " + index + " to " + newIndex);
 		fadeOut.push(panes[index]);
 		panes[index].active = false;
 		index = newIndex;
@@ -886,7 +921,7 @@ objectiveCircle.position.set(slideCircles[currentSlide].x,slideCircles[currentSl
 var circleGraphics = new PIXI.Graphics();
 circleGraphics.beginFill(0x00ff00,0.5);
 circleGraphics.lineStyle(5,0x00ff00,0.75);
-circleGraphics.drawCircle(0,0,panelHeight/2);
+circleGraphics.drawCircle(0,0,panelHeight/2-10);
 objectiveCircle.texture = circleGraphics.generateTexture();
 
 //Arrow to circle
@@ -941,6 +976,20 @@ directionsPane.active = true;
 menuBox.addChild(directionsPane);
 panes.push(directionsPane);
 
+//Win pane
+var winPane = new PIXI.Container();
+
+var winText = new PIXI.Text("You won!", {font: '30px ' + config.style.font,fill: 0xffffff});
+winText.position.set(textCenter.x-winText.width/2,textCenter.y-winText.height/2);
+
+winPane.addChild(winText);
+
+winPane.active = false;
+winPane.visible = false;
+winPane.alpha = 0;
+menuBox.addChild(winPane);
+panes.push(winPane);
+
 //List of circles currently colliding with the crosshair
 var collidingCircles = [];
 
@@ -956,6 +1005,20 @@ function shoot() {
 			}
         }
     }
+	//Check for a win
+	if(current == target) {
+		changePane(2);
+		timers.push(new Timer(10,function() {
+			fadeIn.push(menuBox);
+			menuBox.active = true;
+		}));
+	}
+	//Check for loss
+	if(current > 200) {
+		console.log("You lose, winner");
+	} else if(current == 0 && !config.levels[level-1].operators.includes('+')) {
+		console.log("You lose, loser");
+	}
     indicator.alpha = 1;
     updateCurrent();
     if(getDistance(rocket.position.x,rocket.position.y,camera.x+app.view.width/2,camera.y+app.view.height/2) < radius) {
@@ -969,8 +1032,6 @@ var pulse = true;
 
 //Update everything
 function update() {
-    
-	console.log(fadeOut.length);
 
 	for(var i=0;i<fadeOut.length;i++) {
 		if(fadeOut[i].alpha  > 0 && fadeIn.indexOf(fadeOut[i]) < 0) {
@@ -1023,6 +1084,11 @@ function update() {
         rocket.scale.set(rocket.scale.x+0.01);
     }
 
+	//Fade in rocket
+	if(rocket.alpha < 1) {
+		rocket.alpha += 0.01;
+	}
+
     //Shoot
     if(keysDown.includes(32)) {
         shoot();
@@ -1060,8 +1126,8 @@ function update() {
             rocket.visible = true;
         } else {
             if(rocket.active && (rocket.x+rocket.height/2<0||rocket.x-rocket.height/2>fieldSize||rocket.y+rocket.height/2<0||rocket.y-rocket.height/2>fieldSize)) {
+				rocket.active = false;
                 if(rocket.scale.x < 0.1) {
-                    rocket.active = false;
                     timers.push(new Timer(Math.random()*Math.random()*10000,function() {
                         resetRocket();
                     }));
@@ -1070,7 +1136,11 @@ function update() {
                 }
             }
         }
-    }
+    } else {
+		if(rocket.alpha > 0) {
+			rocket.alpha -= 0.1;
+		}
+	}
 
     //Move
     camera.velocity.x += (basePosition[0]-joystick.position.x)*config.control.sensitivity;
@@ -1117,6 +1187,11 @@ function update() {
         } else {
             circles[i].visible = false;
         }
+
+		//Update on minimap
+		simpleCircles[i].position.set(circles[i].position.x*(panelHeight/fieldSize),circles[i].position.y*(panelHeight/fieldSize));
+		simpleCircles[i].alpha = circles[i].alpha/(getDistance(circles[i].position.x,circles[i].position.y,-camera.x+app.view.width/2,-camera.y+app.view.height/2)/app.view.width);
+
         //Deactivate dividing bubbles resulting in fractions
         if(circles[i].operator == "/") {
             if(current % circles[i].radius != 0) {
@@ -1128,10 +1203,12 @@ function update() {
             if(circles[i].alpha < 0.01) {
                 //Remove
                 main.removeChild(circles[i]);
+				minimap.removeChild(simpleCircles[i]);
                 circles.splice(i,1);
+				simpleCircles.splice(i,1);
                 //Replace
 				if(circles.length < config.levels[level-1].population) {
-                	circles.push(createCircle());
+                	createCircle();
 				}
             } else {
                 //Decrease opacity
@@ -1140,7 +1217,11 @@ function update() {
             }
         }
     }
-    
+
+	//Update minimap crosshair
+	xCross.position.x = (-camera.x)*(panelHeight/fieldSize);
+	yCross.position.y = (-camera.y)*(panelHeight/fieldSize);
+
     //Update stars
     for(var i=0;i<stars.length;i++) {
         stars[i].offsetX = (camera.x/(fieldSize+app.view.width)) * i/(stars.length-1) * (app.view.width/2);
