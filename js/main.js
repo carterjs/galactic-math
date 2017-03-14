@@ -118,6 +118,9 @@ function togglePlay() {
     }
 }
 
+var fadeOut = [],
+	fadeIn = [];
+
 //Environment size
 var fieldSize = 5000;
 
@@ -287,7 +290,7 @@ Particle.prototype.update = function() {
     var now = Date.now();
     var progress = (this.endTime-now)/this.lifespan;
     if(now < this.endTime) {
-        this.body.alpha = progress;
+        this.body.alpha = progress/2;
     } else {
         this.active = false;
     }
@@ -313,8 +316,8 @@ function resetRocket() {
 }
 resetRocket();
 
-//Start at level 1 or localStorage level
-var level = 4,
+//Start at level 1
+var level = 1,
     levelText = new PIXI.Text(level,{font: '35px ' + config.style.font,fill: 0xffffff});
 
 function getRadius(operator) {
@@ -329,7 +332,7 @@ function getRadius(operator) {
             return Math.round(Math.random()*config.levels[level-1].range);
             break;
         case "*":
-            return Math.round((Math.random()-0.5)*config.levels[level-1].range);
+            return Math.round((Math.random()-0.5)*config.levels[level-1].range/target);
             break;
         case "/":
             var options = [];
@@ -353,7 +356,6 @@ function createCircle() {
         range = Math.random()*config.levels[level-1].range,
         radius = getRadius(operator),
         displayRadius = Math.abs(radius)+30,
-        color = Math.floor(Math.random()*0xffffff),
         alpha = Math.random()*0.5+0.25;
     
     circle.anchor.set(0.5);
@@ -363,6 +365,7 @@ function createCircle() {
     circle.velocityY = (Math.random()-0.5)*5;
     circle.operator = operator;
     circle.radius = radius;
+	circle.color = Math.floor(Math.random()*0xffffff);
     circle.active = true;
     circle.scale.set(0);
     
@@ -374,7 +377,7 @@ function createCircle() {
     text.position.y = -text.height/2;
     
     var graphics = new PIXI.Graphics();
-    graphics.beginFill(color,alpha);
+    graphics.beginFill(circle.color,alpha);
     graphics.lineStyle(5,color,1);
     graphics.drawCircle(circle.position.x,circle.position.y,displayRadius);
     graphics.endFill();
@@ -417,24 +420,32 @@ function performOperation(operator, num1, num2) {
 //Current radius and target radius
 var current = 0,
     target = 0,
-    targetText = new PIXI.Text(target,{font: '35px ' + config.style.font, fill: 0xffffff});
+    targetText = new PIXI.Text(target,{font: '35px ' + config.style.font, fill: 0xffffff}),
+	currentText = new PIXI.Text(current,{font: '30px ' + config.style.font, fill: 0xffffff});
+function updateCurrent() {
+    currentText.setText(current);
+    currentText.position.set((app.view.width-currentText.width)/2,(app.view.height-currentText.height)/2);
+}
 
 //Start the level
 function generateLevel() {
     //Level button text
     levelText.setText(level);
     levelText.position.set(-levelText.width/2,-levelText.height/2);
-    //Set beginning radius
+    //Set beginning radius (different from current number)
     current = getRadius();
+	updateCurrent();
     do {
         target = getRadius();
     } while(target == current);
+	//Set target label
     targetText.setText(target);
     targetText.position.x = (app.view.width-targetText.width)/2;
-    
+    //Generate random circles
     for(var i=0;i<circles.length;i++) {
         circles[i].active = false;
     }
+	//Config level index
     var index = level-1;
     if(index >= 0 && index < config.levels.length) {
         var description = config.levels[index].description;
@@ -601,13 +612,7 @@ bottomPanel.texture = bottomPanelGraphics.generateTexture();
 
 panels.addChild(bottomPanel);
 
-//Current radius text
-var currentText = new PIXI.Text(current,{font: '30px ' + config.style.font, fill: 0xffffff});
-function updateCurrent() {
-    currentText.setText(current);
-    currentText.position.set((app.view.width-currentText.width)/2,(app.view.height-currentText.height)/2);
-}
-updateCurrent();
+//Current radius text (declared above generateLevel)
 hud.addChild(currentText);
 
 //Level button
@@ -627,7 +632,8 @@ levelButton.texture = levelGraphics.generateTexture();
 
 levelButton.interactive = true;
 levelButton.on('pointerdown',function() {
-    menuBox.fadeOut = false;
+	fadeIn.push(menuBox);
+    menuBox.active = true;
 });
 
 panels.addChild(levelButton);
@@ -764,8 +770,9 @@ button.interactive = true;
 button.buttonMode = true;
 
 button.on('pointerdown',toggleButton);
+var toggle = false;
 function toggleButton() {
-	if(levelPane.visible) {
+	if(toggle) {
 		changePane(1);
 		buttonText.setText("Levels");
 		buttonText.position.x = (3*panelHeight-buttonText.width-40)/2;
@@ -774,6 +781,7 @@ function toggleButton() {
 		buttonText.setText("Directions");
 		buttonText.position.x = (3*panelHeight-buttonText.width-40)/2;
 	}
+	toggle = !toggle;
 }
 
 menuBox.addChild(button);
@@ -782,16 +790,7 @@ hud.addChild(menuBox);
 
 menuBox.alpha = 1;
 menuBox.visible = true;
-menuBox.fadeOut = false;
-
-//Changing panes
-var panes = [],
-	index = 0;
-function changePane(newIndex) {
-	panes[index].visible = false;
-	index = newIndex;
-	panes[index].visible = true;
-}
+menuBox.active = true;
 
 //Levels
 var levels = [];
@@ -801,7 +800,8 @@ levelPane.position.set(20,panelHeight);
 function selectLevel() {
     level = this.level;
     generateLevel();
-    menuBox.fadeOut = true;
+    menuBox.active = false;
+	fadeOut.push(menuBox);
     this.alpha = 0.5;
 }
 
@@ -813,10 +813,14 @@ function endSelect() {
 var panes = [],
 	index = 1;
 function changePane(newIndex) {
-	console.log("Going from " + index + " to " + newIndex);
-	panes[index].visible = false;
-	index = newIndex;
-	panes[index].visible = true;
+	if(fadeOut.indexOf(panes[index] < 0 && fadeIn.indexOf(panes[index])) < 0 && fadeOut.indexOf(panels[newIndex]) < 0 && fadeIn.indexOf(panels[newIndex]) < 0) {
+		console.log("Going from " + index + " to " + newIndex);
+		fadeOut.push(panes[index]);
+		panes[index].active = false;
+		index = newIndex;
+		fadeIn.push(panes[index]);
+		panes[index].active = true;
+	}
 }
 
 var rowHeight = (app.view.height-3.5*panelHeight-20)/config.levels.length;
@@ -849,17 +853,91 @@ for(var i=0;i<config.levels.length;i++) {
 }
 
 levelPane.visible = false;
+levelPane.active = false;
 panes.push(levelPane);
 menuBox.addChild(levelPane);
 
 var directionsPane = new PIXI.Container();
 var directionsGraphics = new PIXI.Graphics();
-directionsGraphics.beginFill(0,0.25);
-directionsGraphics.lineStyle(0);
+directionsGraphics.beginFill(0x000000,0.1);
+directionsGraphics.lineStyle(0,0xffffff,1);
 directionsGraphics.drawRect(20,panelHeight,3*panelHeight-40,app.view.height-3*panelHeight-20);
 directionsGraphics.endFill();
 
+//Slide data
+var slideArea = new PIXI.Container();
+var slideText = ["Get to this number.","Use the green joystick to move.","Use the red button to shoot."];
+var slideCircles = [new PIXI.Point(1.5*panelHeight,-panelHeight/2+10),new PIXI.Point(2.5*panelHeight,app.view.height-1.5*panelHeight),new PIXI.Point(0.5*panelHeight,app.view.height-1.5*panelHeight)];
+var textCenter = new PIXI.Point(1.5*panelHeight,(app.view.height-1.5*panelHeight)/2);
+var arrowDirections = [];
+for(var i=0;i<slideCircles.length;i++) {
+	arrowDirections.push(Math.atan2(slideCircles[i].y-textCenter.y,slideCircles[i].x-textCenter.x));
+}
+var currentSlide = 0;
+
+//Slide text
+var objectiveText = new PIXI.Text(slideText[currentSlide],{font: '20px ' + config.style.smallFont,fill: 0xffffff});
+objectiveText.position.set((3*panelHeight-objectiveText.width)/2,(app.view.height-1.5*panelHeight-objectiveText.height)/2);
+
+//Circle to highlight subject
+var objectiveCircle = new PIXI.Sprite();
+objectiveCircle.anchor.set(0.5);
+objectiveCircle.position.set(slideCircles[currentSlide].x,slideCircles[currentSlide].y);
+var circleGraphics = new PIXI.Graphics();
+circleGraphics.beginFill(0x00ff00,0.5);
+circleGraphics.lineStyle(5,0x00ff00,0.75);
+circleGraphics.drawCircle(0,0,panelHeight/2);
+objectiveCircle.texture = circleGraphics.generateTexture();
+
+//Arrow to circle
+var arrow = new PIXI.Sprite();
+arrow.anchor.set(0.5);
+arrow.position.set(textCenter.x,textCenter.y-10);
+var arrowGraphics = new PIXI.Graphics();
+var arrowSize = textCenter.y/4;
+arrowGraphics.beginFill(0x00ff00,0.25);
+arrowGraphics.lineStyle(5,0x00ff00,0.5);
+arrowGraphics.moveTo(0.25*arrowSize,0);
+arrowGraphics.lineTo(arrowSize*0.75,0);
+arrowGraphics.lineTo(arrowSize*0.75,-arrowSize/2);
+arrowGraphics.lineTo(arrowSize,-arrowSize/2);
+arrowGraphics.lineTo(arrowSize/2,-arrowSize);
+arrowGraphics.lineTo(0,-arrowSize/2);
+arrowGraphics.lineTo(arrowSize*0.25,-arrowSize/2);
+arrowGraphics.lineTo(0.25*arrowSize,0);
+arrowGraphics.endFill();
+
+arrow.texture = arrowGraphics.generateTexture();
+
+arrow.rotation = arrowDirections[currentSlide]+Math.PI/2;	arrow.position.set(textCenter.x+Math.cos(arrowDirections[currentSlide])*arrowSize,textCenter.y+Math.sin(arrowDirections[currentSlide])*arrowSize);
+
+function advanceSlide() {
+	currentSlide++;
+	if(currentSlide > slideText.length-1) {
+		currentSlide = 0;
+
+	}
+	fadeOut.push(slideArea);
+	timers.push(new Timer(250, function() {
+		objectiveText.setText(slideText[currentSlide]);
+		objectiveText.position.x = (3*panelHeight-objectiveText.width)/2;
+		objectiveCircle.position.set(slideCircles[currentSlide].x,slideCircles[currentSlide].y);
+		arrow.rotation = arrowDirections[currentSlide]+Math.PI/2;	arrow.position.set(textCenter.x+Math.cos(arrowDirections[currentSlide])*arrowSize,textCenter.y+Math.sin(arrowDirections[currentSlide])*arrowSize);
+		fadeIn.push(slideArea);
+	}));
+	timers.push(new Timer(5000,advanceSlide));
+}
+
+timers.push(new Timer(5000,advanceSlide));
+
+directionsPane.addChild(slideArea);
+
+slideArea.addChild(objectiveText);
+slideArea.addChild(objectiveCircle);
+slideArea.addChild(arrow);
+
 directionsPane.addChild(directionsGraphics);
+directionsPane.active = true;
 menuBox.addChild(directionsPane);
 panes.push(directionsPane);
 
@@ -868,19 +946,22 @@ var collidingCircles = [];
 
 //Shoot
 function shoot() {
-	changePane(1);
     //All colliding circles
     for(var i=0;i<collidingCircles.length;i++) {
         if(collidingCircles[i].active) {
             current = performOperation(collidingCircles[i].operator,current,collidingCircles[i].radius);
             collidingCircles[i].active = false;
+			for(var j=0;j<10;j++) {
+				particles.push(new Particle(collidingCircles[i].x,collidingCircles[i].y,(Math.random()-0.5)*10,(Math.random()-0.5)*10,Math.random()*collidingCircles[i].width/2,collidingCircles[i].color,500));
+			}
         }
     }
     indicator.alpha = 1;
     updateCurrent();
     if(getDistance(rocket.position.x,rocket.position.y,camera.x+app.view.width/2,camera.y+app.view.height/2) < radius) {
         //Hit the rocket
-        menuBox.fadeOut = false;
+		changePane(1);
+		fadeIn.push(menuBox);
     }
 }
 
@@ -889,21 +970,40 @@ var pulse = true;
 //Update everything
 function update() {
     
-    //Fade in and out
-    if(!menuBox.fadeOut) {
-        menuBox.visible = true;
-        if(menuBox.alpha < 1) {
-            menuBox.alpha += 0.05;
-        }
+	console.log(fadeOut.length);
+
+	for(var i=0;i<fadeOut.length;i++) {
+		if(fadeOut[i].alpha  > 0 && fadeIn.indexOf(fadeOut[i]) < 0) {
+			fadeOut[i].alpha -= 0.1;
+		} else {
+			fadeOut[i].visible = false;
+			fadeOut[i].alpha = 0;
+			fadeOut.splice(i,1);
+		}
+	}
+	for(var i=0;i<fadeIn.length;i++) {
+		fadeIn[i].visible = true;
+		if(fadeIn[i].alpha  <= 1 && fadeOut.indexOf(fadeIn[i]) < 0) {
+			fadeIn[i].alpha += 0.1;
+		} else {
+			fadeIn[i].alpha = 1;
+			fadeIn.splice(i,1);
+		}
+	}
+
+    //Blur
+    if(menuBox.active) {
         main.filters = [blurFilter];
         if(blurFilter.blur < 10) {
             blurFilter.blur += 0.5;
         }
-        //Rocket pulse for menu
+        //Rocket and circle pulse
         if(pulse) {
             decoRocket.scale.set(decoRocket.scale.x*1.01);
+			objectiveCircle.scale.set(objectiveCircle.scale.x*1.01);
         } else {
             decoRocket.scale.set(decoRocket.scale.x*0.99);
+			objectiveCircle.scale.set(objectiveCircle.scale.x*0.99);
         }
         if(decoRocket.scale.x > 0.2) {
             pulse = false;
@@ -911,11 +1011,6 @@ function update() {
             pulse = true;
         }
     } else {
-        if(menuBox.alpha > 0) {
-            menuBox.alpha -= 0.05;
-        } else {
-            menuBox.visible = false;
-        }
         if(blurFilter.blur > 0) {
             blurFilter.blur -= 0.5;
         } else {
@@ -1035,11 +1130,13 @@ function update() {
                 main.removeChild(circles[i]);
                 circles.splice(i,1);
                 //Replace
-                circles.push(createCircle());
+				if(circles.length < config.levels[level-1].population) {
+                	circles.push(createCircle());
+				}
             } else {
                 //Decrease opacity
                 circles[i].alpha *= 0.9;
-                circles[i].scale.set(0.95*circles[i].scale.x);
+                circles[i].scale.set(1.01*circles[i].scale.x);
             }
         }
     }
