@@ -337,7 +337,7 @@ function getRadius(operator) {
             return Math.round(Math.random()*config.levels[level-1].range);
             break;
         case "*":
-            return Math.round((Math.random()-0.5)*config.levels[level-1].range/target);
+            return Math.round((Math.random()-0.5)*(config.levels[level-1].range/(target*current)));
             break;
         case "/":
             var options = [];
@@ -453,7 +453,7 @@ function generateLevel() {
     current = getRadius();
 	updateCurrent();
     do {
-        target = getRadius();
+        target = getRadius("/");
     } while(target == current);
 	//Set target label
     targetText.setText(target);
@@ -668,7 +668,6 @@ levelButton.interactive = true;
 levelButton.on('pointerdown',function() {
 	fadeIn.push(menuBox);
     menuBox.active = true;
-	toggleButton();
 });
 
 panels.addChild(levelButton);
@@ -805,18 +804,21 @@ button.interactive = true;
 button.buttonMode = true;
 
 button.on('pointerdown',toggleButton);
-var toggle = false;
-function toggleButton() {
-	if(toggle) {
-		changePane(1);
+function updateButton() {
+	if(!levelPane.active) {
 		buttonText.setText("Levels");
-		buttonText.position.x = (3*panelHeight-buttonText.width-40)/2;
+	} else {
+		buttonText.setText("Directions");
+	}
+	buttonText.position.x = (3*panelHeight-buttonText.width-40)/2;
+}
+function toggleButton() {
+	if(buttonText.text == "Directions") {
+		changePane(1);
 	} else {
 		changePane(0);
-		buttonText.setText("Directions");
-		buttonText.position.x = (3*panelHeight-buttonText.width-40)/2;
 	}
-	toggle = !toggle;
+	updateButton();
 }
 
 menuBox.addChild(button);
@@ -835,7 +837,6 @@ levelPane.position.set(20,panelHeight);
 function selectLevel() {
     level = this.level;
     generateLevel();
-	toggleButton();
     menuBox.active = false;
 	fadeOut.push(menuBox);
     this.alpha = 0.5;
@@ -874,11 +875,11 @@ for(var i=0;i<config.levels.length;i++) {
     levels[i].level = i+1;
     levelPane.addChild(levels[i]);
     var text = new PIXI.Text("Level " + (i+1),{font: '20px ' + config.style.font, fill: 0xffffff});
-    text.position.set(20,(rowHeight-text.height)/2);
+    text.position.set(10,(rowHeight-text.height)/2);
     graphics.addChild(text);
-    var text2 = new PIXI.Text(config.levels[i].description,{font: '15px ' + config.style.smallFont, fill: 0xffffff, wordWrap: true, wordWrapWidth: 1.5*panelHeight});
+    var text2 = new PIXI.Text(config.levels[i].description,{font: '15px ' + config.style.smallFont, fill: 0xffffff, wordWrap: true, wordWrapWidth: 3*panelHeight-text.width-60});
     text2.alpha = 0.5;
-    text2.position.set(3*panelHeight-40-text2.width-20,(rowHeight-text2.height)/2);
+    text2.position.set(3*panelHeight-40-text2.width-10,(rowHeight-text2.height)/2);
     graphics.addChild(text2);
     levels[i].texture = graphics.generateTexture();
     levels[i]
@@ -911,7 +912,7 @@ for(var i=0;i<slideCircles.length;i++) {
 var currentSlide = 0;
 
 //Slide text
-var objectiveText = new PIXI.Text(slideText[currentSlide],{font: '20px ' + config.style.smallFont,fill: 0xffffff});
+var objectiveText = new PIXI.Text(slideText[currentSlide],{font: '15px ' + config.style.smallFont,fill: 0xffffff});
 objectiveText.position.set((3*panelHeight-objectiveText.width)/2,(app.view.height-1.5*panelHeight-objectiveText.height)/2);
 
 //Circle to highlight subject
@@ -976,19 +977,44 @@ directionsPane.active = true;
 menuBox.addChild(directionsPane);
 panes.push(directionsPane);
 
-//Win pane
-var winPane = new PIXI.Container();
+//End pane
+var endPane = new PIXI.Container();
+var endText = new PIXI.Text("You won!", {font: '30px ' + config.style.font,fill: 0xffffff});
+endText.position.set(textCenter.x-endText.width/2,textCenter.y-panelHeight/2-endText.height/2);
 
-var winText = new PIXI.Text("You won!", {font: '30px ' + config.style.font,fill: 0xffffff});
-winText.position.set(textCenter.x-winText.width/2,textCenter.y-winText.height/2);
+endPane.addChild(endText);
 
-winPane.addChild(winText);
+var replayButton = new PIXI.Sprite();
+replayButton.position.set(20,app.view.height-3*panelHeight-20);
+var replayButtonGraphics = new PIXI.Graphics();
+replayButtonGraphics.beginFill(config.style.baseColor,0.5);
+replayButtonGraphics.lineStyle(1,0xffffff,1);
+replayButtonGraphics.drawRect(0,0,3*panelHeight-40,panelHeight/2);
+replayButtonGraphics.endFill();
 
-winPane.active = false;
-winPane.visible = false;
-winPane.alpha = 0;
-menuBox.addChild(winPane);
-panes.push(winPane);
+replayButton.texture = replayButtonGraphics.generateTexture();
+
+replayButton.interactive = true;
+replayButton.buttonMode = true;
+
+replayButton.on('pointerdown', function() {
+	generateLevel();
+	fadeOut.push(menuBox);
+	menuBox.active = false;
+	toggleButton();
+});
+
+var replayButtonText = new PIXI.Text("Play Again", {font:'20px ' + config.style.font, fill: 0xffffff});
+replayButtonText.position.set((3*panelHeight-40-replayButtonText.width)/2,(panelHeight/2-replayButtonText.height)/2);
+
+replayButton.addChild(replayButtonText);
+endPane.addChild(replayButton);
+
+endPane.active = false;
+endPane.visible = false;
+endPane.alpha = 0;
+menuBox.addChild(endPane);
+panes.push(endPane);
 
 //List of circles currently colliding with the crosshair
 var collidingCircles = [];
@@ -1008,6 +1034,8 @@ function shoot() {
 	//Check for a win
 	if(current == target) {
 		changePane(2);
+		levelPane.visible = directionsPane.visible = false;
+		updateButton();
 		timers.push(new Timer(10,function() {
 			fadeIn.push(menuBox);
 			menuBox.active = true;
@@ -1190,7 +1218,7 @@ function update() {
 
 		//Update on minimap
 		simpleCircles[i].position.set(circles[i].position.x*(panelHeight/fieldSize),circles[i].position.y*(panelHeight/fieldSize));
-		simpleCircles[i].alpha = circles[i].alpha/(getDistance(circles[i].position.x,circles[i].position.y,-camera.x+app.view.width/2,-camera.y+app.view.height/2)/app.view.width);
+		simpleCircles[i].alpha = circles[i].alpha/(getDistance(circles[i].position.x,circles[i].position.y,-camera.x+app.view.width/2,-camera.y+app.view.height/2)/app.view.width/2);
 
         //Deactivate dividing bubbles resulting in fractions
         if(circles[i].operator == "/") {
