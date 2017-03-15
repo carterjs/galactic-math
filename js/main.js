@@ -678,8 +678,8 @@ crosshair.lineTo(app.view.width / 2, app.view.height / 2 + radius * 2);
 crosshair.alpha = 0.5;
 hud.addChild(crosshair);
 //Position minimap
-minimap.width = panelHeight;
-minimap.height = panelHeight;
+//minimap.width = panelHeight;
+//minimap.height = panelHeight;
 minimap.position.set(app.view.width / 2 - panelHeight / 2, app.view.height - panelHeight + 5);
 var xCross = new PIXI.Graphics()
 xCross.lineStyle(2, config.style.baseColor, 0.5);
@@ -1325,9 +1325,6 @@ function shoot() {
             changePane(2);
             levelPane.visible = directionsPane.visible = false;
             updateButton();
-            fadeIn.push(menuBox);
-            menuBox.active = true;
-			pause = true;
 			togglePause();
         } else {
             //Check for loss
@@ -1337,8 +1334,6 @@ function shoot() {
                 changePane(2);
                 levelPane.visible = directionsPane.visible = false;
                 updateButton();
-                fadeIn.push(menuBox);
-                menuBox.active = true;
 				togglePause();
             }
         }
