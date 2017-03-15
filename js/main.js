@@ -385,11 +385,24 @@ var particles = [];
  * PixiJS sprite representing the rocket
  * @type {Object}
  */
-var rocket = new PIXI.Sprite.fromImage('img/rocket.png');
+var rocket = new PIXI.Sprite.fromImage('img/rocket.png'),
+	/**
+	 * Rocket's representation on the minimap
+	 * @type {Object} - PixiJS Sprite
+	 */
+	miniRocket = new PIXI.Sprite(),
+	miniRocketGraphics = new PIXI.Graphics();
 rocket.anchor.set(0.5);
 rocket.width = 100;
 rocket.height = 150;
 main.addChild(rocket);
+miniRocket.anchor.set(0.5);
+miniRocketGraphics.beginFill(0xff0000,1);
+miniRocketGraphics.drawCircle(0,0,10);
+miniRocketGraphics.endFill();
+miniRocket.texture = miniRocketGraphics.generateTexture();
+miniRocket.width = 10;
+miniRocket.height = 10;
 /**
  * Resets the rocket
  */
@@ -511,17 +524,26 @@ function createCircle() {
     text.position.x = -text.width / 2;
     text.position.y = -text.height / 2;
     /**
-     * The graphics for this circle and the simple circle
+     * The graphics for this circle
      * @type {Object} - PixiJS Graphics
      */
     var graphics = new PIXI.Graphics();
     graphics.beginFill(circle.color, alpha);
-    graphics.lineStyle(10, 0xffffff, 0.25);
+    graphics.lineStyle(5, circle.color, 0.25);
     graphics.drawCircle(circle.position.x, circle.position.y, displayRadius);
     graphics.endFill();
+	/**
+	 * The graphics for this simple circle
+	 * @type {Object} - PixiJS Graphics
+	 */
+	var simpleGraphics = new PIXI.Graphics();
+	simpleGraphics.beginFill(circle.color, alpha);
+    simpleGraphics.lineStyle(0);
+    simpleGraphics.drawCircle(circle.position.x, circle.position.y, displayRadius);
+    simpleGraphics.endFill();
     //Set the graphics as the sprite texture for the circle and simple circle
     circle.texture = graphics.generateTexture();
-    simpleCircle.texture = graphics.generateTexture();
+    simpleCircle.texture = simpleGraphics.generateTexture();
     circle.addChild(text);
     main.addChild(circle);
     //Configure the simple circle
@@ -557,9 +579,6 @@ function performOperation(operator, num1, num2) {
         //Divide
         return num1 / num2;
         break;
-    default:
-        console.log("IMPOSSIBLE!")
-        return false;
     }
 }
 /**
@@ -624,7 +643,6 @@ function generateLevel() {
         }
     } else {
         //Level out of range
-        console.log("Level out of range! Attempting to fix..");
         if(level < 0) {
             level = 0;
         } else {
@@ -678,8 +696,6 @@ crosshair.lineTo(app.view.width / 2, app.view.height / 2 + radius * 2);
 crosshair.alpha = 0.5;
 hud.addChild(crosshair);
 //Position minimap
-//minimap.width = panelHeight;
-//minimap.height = panelHeight;
 minimap.position.set(app.view.width / 2 - panelHeight / 2, app.view.height - panelHeight + 5);
 var xCross = new PIXI.Graphics()
 xCross.lineStyle(2, config.style.baseColor, 0.5);
@@ -691,6 +707,7 @@ yCross.lineStyle(1, config.style.baseColor, 0.5);
 yCross.moveTo(0, (Camera.y + app.view.height / 2) * (panelHeight / fieldSize));
 yCross.lineTo((fieldSize) * (panelHeight / fieldSize), (Camera.y + app.view.height / 2) * (panelHeight / fieldSize));
 minimap.addChild(yCross);
+minimap.addChild(miniRocket);
 /**
  * Top panel - contains target, level, and pause
  * @type {Object} - PixiJS Sprite
@@ -1457,6 +1474,9 @@ function update() {
             rocket.alpha -= 0.1;
         }
     }
+	//Update rocket on minimap
+	miniRocket.position.set(rocket.position.x*(panelHeight/fieldSize),rocket.position.y*(panelHeight/fieldSize));
+	miniRocket.alpha = rocket.alpha;
     //Move
     Camera.velocity.x += (basePosition[0] - joystick.position.x) * config.control.sensitivity;
     Camera.velocity.y += (basePosition[1] - joystick.position.y) * config.control.sensitivity;
