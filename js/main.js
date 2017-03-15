@@ -516,7 +516,7 @@ function createCircle() {
      */
     var graphics = new PIXI.Graphics();
     graphics.beginFill(circle.color, alpha);
-    graphics.lineStyle(5, color, 1);
+    graphics.lineStyle(10, 0xffffff, 0.25);
     graphics.drawCircle(circle.position.x, circle.position.y, displayRadius);
     graphics.endFill();
     //Set the graphics as the sprite texture for the circle and simple circle
@@ -583,7 +583,7 @@ var current = 0,
         fill: 0xffffff
     }),
     /** @type {Boolean} */
-    pause = false;
+    pause = true;
 /** Updates the value and position of the text in the hud for the current number */
 function updateCurrent() {
     currentText.setText(current);
@@ -591,7 +591,6 @@ function updateCurrent() {
 }
 /** Resets all variable values associated with gameplay and repopulates list of circles */
 function generateLevel() {
-    pause = false;
     //Level button text
     levelText.setText(level);
     levelText.position.x = (app.view.width - 2 * panelHeight - levelText.width) / 2;
@@ -635,7 +634,6 @@ function generateLevel() {
     }
 }
 generateLevel();
-pause = true;
 /**
  * The radius of the crosshair on the hud
  * @type {Number}
@@ -823,21 +821,7 @@ hud.addChild(currentText);
 var pauseButton = new PIXI.Sprite();
 pauseButton.interactive = true;
 pauseButton.buttonMode = true;
-pauseButton.on('pointerdown', function () {
-    if(menuBox.active) {
-        pause = true;
-        menuBox.active = false;
-        fadeOut.push(menuBox);
-        fadeOut.push(playGraphic);
-        fadeIn.push(pauseGraphic);
-    } else {
-        pause = false;
-        menuBox.active = true;
-        fadeIn.push(menuBox);
-        fadeOut.push(pauseGraphic);
-        fadeIn.push(playGraphic);
-    }
-});
+pauseButton.on('pointerdown', togglePause);
 pauseButton.position.set((app.view.width + 2 * panelHeight) / 2, panelHeight / 2);
 pauseButton.anchor.set(0.5);
 /**
@@ -944,6 +928,22 @@ function endMove() {
 panels.addChild(joystick);
 //Menu box
 var menuBox = new PIXI.Sprite();
+/** Toggles shooting ability and shows menu */
+function togglePause() {
+	if(menuBox.active && !fadeIn.includes(pauseGraphic) && !fadeOut.includes(pauseGraphic)) {
+        pause = false;
+        menuBox.active = false;
+        fadeOut.push(menuBox);
+        fadeOut.push(playGraphic);
+        fadeIn.push(pauseGraphic);
+    } else if(!fadeIn.includes(playGraphic) && !fadeOut.includes(playGraphic)) {
+        pause = true;
+        menuBox.active = true;
+        fadeIn.push(menuBox);
+        fadeOut.push(pauseGraphic);
+        fadeIn.push(playGraphic);
+    }
+}
 var menuBoxGraphics = new PIXI.Graphics();
 menuBoxGraphics.beginFill(config.style.baseColor, 0.25);
 menuBoxGraphics.lineStyle(1, 0xffffff);
@@ -981,6 +981,7 @@ menuBox.addChild(title);
 menuBox.texture = menuBoxGraphics.generateTexture();
 menuBox.position.x = app.view.width / 2 - 1.5 * panelHeight;
 menuBox.position.y = panelHeight;
+menuBox.active = true;
 /**
  * The main button at the bottom of the menu box
  * @type {Object}
@@ -1046,6 +1047,7 @@ var levels = [],
 levelPane.position.set(20, panelHeight);
 /** Changes to the level clicked - called on the firing of the 'pointerdown' event on the level button */
 function selectLevel() {
+	togglePause();
     level = this.level;
     generateLevel();
     menuBox.active = false;
@@ -1287,6 +1289,7 @@ replayButton.on('pointerdown', function () {
     fadeOut.push(menuBox);
     menuBox.active = false;
     toggleButton();
+	togglePause();
 });
 //Text for the replay button
 var replayButtonText = new PIXI.Text("Play Again", {
@@ -1324,6 +1327,8 @@ function shoot() {
             updateButton();
             fadeIn.push(menuBox);
             menuBox.active = true;
+			pause = true;
+			togglePause();
         } else {
             //Check for loss
             if(Math.abs(current) > 500 || (current == 0 && !config.levels[level - 1].operators.includes('+'))) {
@@ -1334,6 +1339,7 @@ function shoot() {
                 updateButton();
                 fadeIn.push(menuBox);
                 menuBox.active = true;
+				togglePause();
             }
         }
         indicator.alpha = 1;
