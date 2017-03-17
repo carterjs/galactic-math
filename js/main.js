@@ -1300,10 +1300,8 @@ replayButton.interactive = true;
 replayButton.buttonMode = true;
 replayButton.on('pointerdown', function () {
     generateLevel();
-    fadeOut.push(menuBox);
-    menuBox.active = false;
     toggleButton();
-	togglePause();
+    togglePause();
 });
 //Text for the replay button
 var replayButtonText = new PIXI.Text("Play Again", {
