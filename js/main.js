@@ -224,8 +224,8 @@ for(var i = 0; i < fieldSize / 10; i++) {
  */
 var Camera = {
     //Focus point
-    x: 0,
-    y: 0,
+    x: fieldSize/2+app.view.width/2,
+    y: fieldSize/2+app.view.height/2,
     friction: config.control.friction,
     acceleration: {
         x: 0,
@@ -517,7 +517,7 @@ function createCircle() {
      * The PixiJS Text object that shows the radius
      * @type {Object} - PixiJS Text
      */
-    var text = new PIXI.Text(radius > 0 ? circle.operator + radius : circle.operator + "(" + radius + ")", {
+    var text = new PIXI.Text(radius >= 0 ? circle.operator + radius : circle.operator + "(" + radius + ")", {
         font: '30px ' + config.style.font,
         fill: 0xffffff
     });
@@ -1355,8 +1355,9 @@ function shoot() {
         updateCurrent();
         if(getDistance(rocket.position.x, rocket.position.y, Camera.x + app.view.width / 2, Camera.y + app.view.height / 2) < radius) {
             //Hit the rocket
-            changePane(1);
-            fadeIn.push(menuBox);
+            for(var i=0;i<circles.length;i++) {
+		circles[i].active = false;
+	    }
         }
     }
 }
@@ -1553,8 +1554,8 @@ function update() {
         }
     }
     //Update minimap crosshair
-    xCross.position.x = (-Camera.x) * (panelHeight / fieldSize);
-    yCross.position.y = (-Camera.y) * (panelHeight / fieldSize);
+    xCross.position.x = ((-Camera.x-app.view.width/2)/fieldSize) * panelHeight+panelHeight/2;
+    yCross.position.y = ((-Camera.y-app.view.height/2)/fieldSize) * panelHeight+panelHeight/2;
     //Update stars
     for(var i = 0; i < stars.length; i++) {
         stars[i].offsetX = (Camera.x / (fieldSize + app.view.width)) * i / (stars.length - 1) * (app.view.width / 2);
