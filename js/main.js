@@ -419,6 +419,7 @@ function resetRocket() {
     rocket.rotation = angle - Math.PI / 2;
     rocket.active = true;
     rocket.visible = false;
+    rocket.seen = false;
     rocket.scale.set(0);
 }
 resetRocket();
@@ -972,14 +973,10 @@ menuBoxGraphics.endFill();
 menuBoxGraphics.moveTo(app.view.width / 2 - 1.5 * panelHeight + 20, panelHeight * 2);
 menuBoxGraphics.lineTo(app.view.width / 2 + 1.5 * panelHeight - 20, panelHeight * 2);
 //Menu box title
-var title = new PIXI.Text("Galactic Math", {
-    font: '35px ' + config.style.font,
-    fill: [0x880000, 0x884444],
-    stroke: 0xffffff,
-    strokeThickness: 2
-});
-title.position.x = panelHeight * 1.5 - title.width / 2;
-title.position.y = panelHeight * 0.5 - 10;
+var title = new PIXI.Sprite.fromImage('img/logo.png');
+title.anchor.set(0.5);
+title.position.x = panelHeight * 1.5;
+title.position.y = panelHeight * 0.5+10;
 title.alpha = 0.75;
 /**
  * The light rocket behind the title in the menu box
@@ -1241,7 +1238,7 @@ arrowGraphics.lineTo(0.25 * arrowSize, 0);
 arrowGraphics.endFill();
 arrow.texture = arrowGraphics.generateTexture();
 arrow.rotation = arrowDirections[currentSlide] + Math.PI / 2;
-arrow.position.set(textCenter.x + Math.cos(arrowDirections[currentSlide]) * (arrowSize + 20), textCenter.y + Math.sin(arrowDirections[currentSlide]) * (arrowSize + 20));
+arrow.position.set(textCenter.x + Math.cos(arrowDirections[currentSlide]) * (arrowSize + 10), textCenter.y + Math.sin(arrowDirections[currentSlide]) * (arrowSize + 10));
 /**
  * Increments the current slide and animates transitions
  */
@@ -1368,6 +1365,7 @@ function shoot() {
  * @type {Boolean}
  */
 var pulse = true;
+var timerSet = false;
 /**
  * Update everything - called later by the game loop
  */
@@ -1419,7 +1417,7 @@ function update() {
         }
     }
     //Scale in rocket
-    if(rocket.scale.x < 0.5) {
+    if(rocket.scale.x < 0.5 && rocket.active) {
         rocket.scale.set(rocket.scale.x + 0.01);
     }
     //Fade in rocket
@@ -1457,26 +1455,32 @@ function update() {
         //Culling and respawning
         if(inView(rocket.x, rocket.y - rocket.height / 2, rocket.height, rocket.height)) {
             rocket.visible = true;
+            timers.push(new Timer(200,function() {
+                rocket.seen = true;
+            }));
         } else {
-            if(rocket.active && (rocket.x + rocket.height / 2 < 0 || rocket.x - rocket.height / 2 > fieldSize || rocket.y + rocket.height / 2 < 0 || rocket.y - rocket.height / 2 > fieldSize)) {
+            if(rocket.seen) {
                 rocket.active = false;
-                if(rocket.scale.x < 0.1) {
-                    timers.push(new Timer(Math.random() * Math.random() * 10000, function () {
-                        resetRocket();
-                    }));
-                } else {
-                    rocket.scale.set(rocket.scale.x - 0.05);
-                }
             }
         }
     } else {
-        if(rocket.alpha > 0) {
-            rocket.alpha -= 0.1;
+        if(rocket.scale.x > 0) {
+            rocket.scale.set(rocket.scale.x - 0.1);
+        } else {
+            rocket.visible = false;
+            if(!timerSet) {
+                timers.push(new Timer(Math.random()* 5000 + 5000, function () {
+                    console.log("Rocket inbound");
+                    resetRocket();
+                    timerSet = false;
+                }));
+                timerSet = true;
+            }
         }
     }
 	//Update rocket on minimap
 	miniRocket.position.set(rocket.position.x*(panelHeight/fieldSize),rocket.position.y*(panelHeight/fieldSize));
-	miniRocket.alpha = rocket.alpha;
+    miniRocket.visible = rocket.visible;
     //Move
     Camera.velocity.x += (basePosition[0] - joystick.position.x) * config.control.sensitivity;
     Camera.velocity.y += (basePosition[1] - joystick.position.y) * config.control.sensitivity;
