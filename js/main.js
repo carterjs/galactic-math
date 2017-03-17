@@ -224,8 +224,8 @@ for(var i = 0; i < fieldSize / 10; i++) {
  */
 var Camera = {
     //Focus point
-    x: fieldSize/2+app.view.width/2,
-    y: fieldSize/2+app.view.height/2,
+    x: -fieldSize/2+app.view.width/2,
+    y: -fieldSize/2+app.view.height/2,
     friction: config.control.friction,
     acceleration: {
         x: 0,
