@@ -651,7 +651,7 @@ function generateLevel() {
         }
         generateLevel();
     }
-    timers.push(new Timer(Math.round(Math.random()*30000),function() {
+    timers.push(new Timer(Math.round(Math.random()*100),function() {
          resetRocket();
     }));
 }
@@ -1423,9 +1423,19 @@ function update() {
     if(rocket.scale.x < 0.5 && rocket.active) {
         rocket.scale.set(rocket.scale.x + 0.01);
     }
+    //Scale out rocket
+    if(!rocket.active && rocket.scale > 0) {
+        rocket.scale.set(rocket.scale.x - 0.01);
+    }
     //Fade in rocket
     if(rocket.alpha < 1) {
         rocket.alpha += 0.01;
+    }
+    //Fade out rocket
+    if(!rocket.active) {
+       if(rocket.alpha > 0) {
+	   rocket.alpha -= 0.01;
+       }
     }
     //Shoot
     if(keysDown.includes(32)) {
