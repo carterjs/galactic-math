@@ -651,6 +651,9 @@ function generateLevel() {
         }
         generateLevel();
     }
+    timers.push(new Timer(Math.round(Math.random()*30000),function() {
+         resetRocket();
+    }));
 }
 generateLevel();
 /**
@@ -1460,20 +1463,6 @@ function update() {
         } else {
             if(rocket.seen) {
                 rocket.active = false;
-            }
-        }
-    } else {
-        if(rocket.scale.x > 0) {
-            rocket.scale.set(rocket.scale.x - 0.1);
-        } else {
-            rocket.visible = false;
-            if(!timerSet) {
-                timers.push(new Timer(Math.random()* 5000 + 5000, function () {
-                    console.log("Rocket inbound");
-                    resetRocket();
-                    timerSet = false;
-                }));
-                timerSet = true;
             }
         }
     }
