@@ -978,6 +978,7 @@ menuBoxGraphics.lineTo(app.view.width / 2 + 1.5 * panelHeight - 20, panelHeight 
 //Menu box title
 var title = new PIXI.Sprite.fromImage('img/logo.png');
 title.anchor.set(0.5);
+title.scale.set(0.85);
 title.position.x = panelHeight * 1.5;
 title.position.y = panelHeight * 0.5+10;
 title.alpha = 0.75;
