@@ -1471,10 +1471,6 @@ function update() {
             timers.push(new Timer(200,function() {
                 rocket.seen = true;
             }));
-        } else {
-            if(rocket.seen) {
-                rocket.active = false;
-            }
         }
     }
 	//Update rocket on minimap
