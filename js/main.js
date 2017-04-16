@@ -60,12 +60,12 @@ var config = {
  * Width of the page
  * @type {Number}
  */
-var scaledWidth = document.body.scrollWidth*2;
+var scaledWidth = document.body.scrollWidth;
 /**
  * Height of the page
  * @type {Number}
  */
-var scaledHeight = document.body.scrollHeight*2;
+var scaledHeight = document.body.scrollHeight;
 /** PixiJS App object - contains renderer, stage, view, and other important things
  * @type {Object}
  */
@@ -73,8 +73,8 @@ var app = new PIXI.Application( /** Number */ scaledWidth, scaledHeight, {
     view: document.getElementById('canvas'),
     antialias: true
 });
-var width = app.view.width/2;
-var height = app.view.height/2;
+var width = app.view.width;
+var height = app.view.height;
 /**
  * The container affected by the Camera movement
  * @type {Object}
@@ -106,16 +106,10 @@ app.stage.addChild(panels);
  * @type {Object}
  */
 var minimap = new PIXI.Container();
-panels.addChild(minimap);
 /**
  * Transparent white gradient around edges
  * @type {Object}
  */
-var border = new PIXI.Sprite.fromImage('img/border.png');
-border.width = width;
-border.height = height;
-border.alpha = 0.01;
-hud.addChild(border);
 /**
  * Get distance using the distance formula
  * @param {Number} x1 - First coordinate x
@@ -186,6 +180,10 @@ var fadeOut = [],
  * @const {Number}
  */
 var fieldSize = 5000;
+var fieldBorder = new PIXI.Graphics();
+fieldBorder.lineStyle(50,0xffffff,0.01);
+fieldBorder.drawRect(0,0,fieldSize,fieldSize);
+main.addChild(fieldBorder);
 /**
  * The array of PixiJS sprites for the background
  * @type {Object[]}
@@ -540,7 +538,7 @@ function createCircle() {
 	var simpleGraphics = new PIXI.Graphics();
 	simpleGraphics.beginFill(circle.color, alpha);
     simpleGraphics.lineStyle(0);
-    simpleGraphics.drawCircle(circle.position.x, circle.position.y, displayRadius);
+    simpleGraphics.drawCircle(circle.position.x, circle.position.y, displayRadius*2);
     simpleGraphics.endFill();
     //Set the graphics as the sprite texture for the circle and simple circle
     circle.texture = graphics.generateTexture();
@@ -551,7 +549,7 @@ function createCircle() {
     simpleCircle.position.x = circle.position.x * (panelHeight / fieldSize);
     simpleCircle.position.y = circle.position.y * (panelHeight / fieldSize);
     simpleCircle.anchor.set(0.5);
-    simpleCircle.scale.set(panelHeight / fieldSize * 2);
+    simpleCircle.scale.set(panelHeight / fieldSize);
     minimap.addChild(simpleCircle);
     circles.push(circle);
     simpleCircles.push(simpleCircle);
@@ -700,7 +698,7 @@ crosshair.lineTo(width / 2, height / 2 + radius * 2);
 crosshair.alpha = 0.5;
 hud.addChild(crosshair);
 //Position minimap
-minimap.position.set(width / 2 - panelHeight / 2, height - panelHeight + 5);
+minimap.position.set(width / 2 - panelHeight / 2, height - panelHeight);
 var xCross = new PIXI.Graphics()
 xCross.lineStyle(2, 0xff0000, 0.5);
 xCross.moveTo((Camera.x + width / 2) * (panelHeight / fieldSize), 0);
@@ -722,6 +720,48 @@ var topPanel = new PIXI.Sprite();
  * @type {Object}
  */
 var topPanelGraphics = new PIXI.Graphics();
+var controlStart = width/2-1.5*panelHeight;
+var controlEnd = width - controlStart;
+//Background
+if(width-3*panelHeight > panelHeight) {
+  topPanelGraphics.beginFill(0xffffff,0.1);
+  topPanelGraphics.lineStyle(2,0xffffff,0.1);
+  topPanelGraphics.moveTo(0,0);
+  topPanelGraphics.lineTo(controlStart/4,panelHeight/2);
+  topPanelGraphics.lineTo(controlStart*(3/4),panelHeight/2);
+  topPanelGraphics.lineTo(controlStart,panelHeight);
+  topPanelGraphics.lineTo(controlEnd,panelHeight);
+  topPanelGraphics.lineTo(controlEnd+(width-controlEnd)/4,panelHeight/2);
+  topPanelGraphics.lineTo(controlEnd+(width-controlEnd)*(3/4),panelHeight/2);
+  topPanelGraphics.lineTo(width,0);
+  topPanelGraphics.endFill();
+} else {
+  topPanelGraphics.beginFill(0xffffff,0.1);
+  topPanelGraphics.lineStyle(2,0xffffff,0.1);
+  topPanelGraphics.moveTo(0,0);
+  topPanelGraphics.lineTo(0,panelHeight/2);
+  topPanelGraphics.lineTo(controlStart,panelHeight);
+  topPanelGraphics.lineTo(controlEnd,panelHeight);
+  topPanelGraphics.lineTo(width,panelHeight/2);
+  topPanelGraphics.lineTo(width,0);
+  topPanelGraphics.endFill();
+}
+//Sector 1
+topPanelGraphics.beginFill(0x000000,0.1);
+topPanelGraphics.lineStyle(1,0xffffff,0.1);
+topPanelGraphics.drawRect(width/2-1.5*panelHeight,0,panelHeight,panelHeight);
+topPanelGraphics.endFill();
+//Sector 2
+topPanelGraphics.beginFill(0xffffff,0.1);
+topPanelGraphics.lineStyle(1,0xffffff,0.1);
+topPanelGraphics.drawRect((width-panelHeight)/2,0,panelHeight,panelHeight);
+topPanelGraphics.endFill();
+//Sector 3
+topPanelGraphics.beginFill(0x000000,0.1);
+topPanelGraphics.lineStyle(1,0xffffff,0.1);
+topPanelGraphics.drawRect((width+panelHeight)/2,0,panelHeight,panelHeight);
+topPanelGraphics.endFill();
+panels.addChild(topPanelGraphics);
 //Target box
 panels.addChild(levelText);
 levelText.position.y = (panelHeight - levelText.height) / 2;
@@ -749,6 +789,46 @@ var bottomPanel = new PIXI.Sprite();
  * @type {Object} PixiJS Graphics
  */
 var bottomPanelGraphics = new PIXI.Graphics();
+if(width-3*panelHeight > panelHeight) {
+  bottomPanelGraphics.beginFill(0xffffff,0.1);
+  bottomPanelGraphics.lineStyle(2,0xffffff,0.1);
+  bottomPanelGraphics.moveTo(0,height);
+  bottomPanelGraphics.lineTo(controlStart/4,height-panelHeight/2);
+  bottomPanelGraphics.lineTo(controlStart*(3/4),height-panelHeight/2);
+  bottomPanelGraphics.lineTo(controlStart,height-panelHeight);
+  bottomPanelGraphics.lineTo(controlEnd,height-panelHeight);
+  bottomPanelGraphics.lineTo(controlEnd+(width-controlEnd)/4,height-panelHeight/2);
+  bottomPanelGraphics.lineTo(controlEnd+(width-controlEnd)*(3/4),height-panelHeight/2);
+  bottomPanelGraphics.lineTo(width,height);
+  bottomPanelGraphics.endFill();
+} else {
+  bottomPanelGraphics.beginFill(0xffffff,0.1);
+  bottomPanelGraphics.lineStyle(2,0xffffff,0.1);
+  bottomPanelGraphics.moveTo(0,height);
+  bottomPanelGraphics.lineTo(0,height-panelHeight/2);
+  bottomPanelGraphics.lineTo(controlStart,height-panelHeight);
+  bottomPanelGraphics.lineTo(controlEnd,height-panelHeight);
+  bottomPanelGraphics.lineTo(width,height-panelHeight/2);
+  bottomPanelGraphics.lineTo(width,height);
+  bottomPanelGraphics.endFill();
+}
+//Sector 1
+bottomPanelGraphics.beginFill(0x000000,0.1);
+bottomPanelGraphics.lineStyle(1,0xffffff,0.1);
+bottomPanelGraphics.drawRect(width/2-1.5*panelHeight,height-panelHeight,panelHeight,panelHeight);
+bottomPanelGraphics.endFill();
+//Sector 2
+bottomPanelGraphics.beginFill(0x000000,0.5);
+bottomPanelGraphics.lineStyle(1,0xffffff,0.1);
+bottomPanelGraphics.drawRect((width-panelHeight)/2,height-panelHeight,panelHeight,panelHeight);
+bottomPanelGraphics.endFill();
+//Sector 3
+bottomPanelGraphics.beginFill(0x000000,0.1);
+bottomPanelGraphics.lineStyle(1,0xffffff,0.1);
+bottomPanelGraphics.drawRect((width+panelHeight)/2,height-panelHeight,panelHeight,panelHeight);
+bottomPanelGraphics.endFill();
+panels.addChild(bottomPanelGraphics);
+panels.addChild(minimap);
 //Current radius text (declared above generateLevel)
 hud.addChild(currentText);
 /**
@@ -761,6 +841,12 @@ pauseButton.buttonMode = true;
 pauseButton.on('pointerdown', togglePause);
 pauseButton.position.set((width + 2 * panelHeight) / 2, panelHeight / 2);
 pauseButton.anchor.set(0.5);
+var pauseButtonWrapper = new PIXI.Graphics();
+pauseButtonWrapper.beginFill(0xffffff,0.1);
+pauseButtonWrapper.lineStyle(1,0xffffff,0.1);
+pauseButtonWrapper.drawCircle(0,0,panelHeight/4);
+pauseButtonWrapper.endFill();
+pauseButton.addChild(pauseButtonWrapper);
 /**
  * Pause button graphic
  * @type {Object} - PixiJS Graphics
@@ -785,18 +871,12 @@ pauseButton.addChild(playGraphic);
  * PixiJS Graphics for pause button
  * @type {Obect} - PixiJS Graphics
  */
-var pauseButtonGraphics = new PIXI.Graphics();
-pauseButtonGraphics.beginFill(0xffffff, 0.1);
-pauseButtonGraphics.lineStyle(2, config.style.baseColor, 0.5);
-//pauseButtonGraphics.drawCircle(0, 0, panelHeight / 4);
-pauseButtonGraphics.endFill();
-pauseButton.texture = pauseButtonGraphics.generateTexture();
 panels.addChild(pauseButton);
 //Shoot button graphic
 var shootButtonGraphics = new PIXI.Graphics();
-shootButtonGraphics.beginFill(0xff0000);
+shootButtonGraphics.beginFill(0xff0000,0.5);
 shootButtonGraphics.lineStyle(2, 0x000000, 0.5);
-shootButtonGraphics.drawCircle(0, 0, panelHeight / 4);
+shootButtonGraphics.drawCircle(0, 0, panelHeight / 3);
 shootButtonGraphics.endFill();
 shootButtonGraphics.lineStyle(1, 0x000000,0.5);
 shootButtonGraphics.moveTo(0,-panelHeight/4+4);
@@ -807,6 +887,10 @@ shootButtonGraphics.beginFill(0x000000,0.1);
 shootButtonGraphics.lineStyle(2,0x000000,0.5);
 shootButtonGraphics.drawCircle(0,0,panelHeight/8);
 shootButtonGraphics.endFill();
+shootButtonGraphics.lineStyle(5,0x000000,0.15);
+shootButtonGraphics.drawCircle(0,0,panelHeight/3.5);
+shootButtonGraphics.lineStyle(3,0x000000,0.1);
+shootButtonGraphics.drawCircle(0,0,panelHeight/5);
 //Shoot button
 var shootButton = new PIXI.Sprite();
 shootButton.anchor.set(0.5);
@@ -824,12 +908,23 @@ shootButton.on('pointerdown', function () {
     shootButton.scale.set(1);
 });
 panels.addChild(shootButton);
+//Joystick area
+var joystickArea = new PIXI.Graphics();
+joystickArea.beginFill(0x000000,0.1);
+joystickArea.lineStyle(5,0xffffff,0.1);
+joystickArea.drawCircle((width + 2 * panelHeight) / 2, height - (panelHeight) / 2,panelHeight/3);
+joystickArea.endFill();
+panels.addChild(joystickArea);
 //Joystick graphic
 var joystickGraphic = new PIXI.Graphics();
-joystickGraphic.beginFill(0x00ff00);
+joystickGraphic.beginFill(0x00ff00,0.5);
 joystickGraphic.lineStyle(2, 0x000000, 0.5);
-joystickGraphic.drawCircle(0, 0, panelHeight / 5);
+joystickGraphic.drawCircle(0, 0, panelHeight/4);
 joystickGraphic.endFill();
+joystickGraphic.lineStyle(2,0x000000,0.5);
+joystickGraphic.drawCircle(0,0,panelHeight/4.5);
+joystickGraphic.lineStyle(1,0x000000,0.25);
+joystickGraphic.drawCircle(0,0,panelHeight/6);
 //Joystick
 var joystick = new PIXI.Sprite();
 joystick.anchor.set(0.5);
@@ -885,7 +980,7 @@ function togglePause() {
 }
 var menuBoxGraphics = new PIXI.Graphics();
 menuBoxGraphics.beginFill(config.style.baseColor, config.style.menuAlpha/2);
-menuBoxGraphics.lineStyle(5,0xffffff,0.1);
+menuBoxGraphics.lineStyle(1,0xffffff,0.1);
 menuBoxGraphics.drawRect(width / 2 - 1.5 * panelHeight, panelHeight, 3 * panelHeight, height - 2 * panelHeight);
 menuBoxGraphics.endFill();
 menuBoxGraphics.beginFill(0x000000, config.style.menuAlpha);
@@ -896,7 +991,8 @@ menuBoxGraphics.lineTo(width / 2 + 1.5 * panelHeight - 20, panelHeight * 2);
 //Menu box title
 var title = new PIXI.Sprite.fromImage('img/logo.png');
 title.anchor.set(0.5);
-title.scale.set(0.85);
+title.height = panelHeight-60;
+title.width = panelHeight*3-80;
 title.position.x = panelHeight * 1.5;
 title.position.y = panelHeight * 0.5+10;
 title.alpha = 0.75;
@@ -930,7 +1026,7 @@ var button = new PIXI.Sprite();
 var buttonGraphics = new PIXI.Graphics();
 buttonGraphics.beginFill(config.style.baseColor, config.style.menuGraphics);
 buttonGraphics.lineStyle(5, 0xffffff, 0.1);
-buttonGraphics.drawRect(0, 0, 3 * panelHeight - 40-10, panelHeight / 2-10);
+buttonGraphics.drawRect(0, 0, 3 * panelHeight - 40, panelHeight / 2);
 buttonGraphics.endFill();
 /**
  * The text for the main button - will be changed based on menu state
@@ -943,7 +1039,7 @@ var buttonText = new PIXI.Text("Next", {
 buttonText.position.set((3 * panelHeight - buttonText.width - 40) / 2, 0.25 * panelHeight - buttonText.height / 2);
 button.addChild(buttonText);
 button.texture = buttonGraphics.generateTexture();
-button.position.set(25, height - 2.5 * panelHeight - 15);
+button.position.set(20, height - 2.5 * panelHeight - 20);
 button.interactive = true;
 button.buttonMode = true;
 button.on('pointerdown', toggleButton);
@@ -1023,8 +1119,8 @@ for(var i = 0; i < config.levels.length; i++) {
     levels.push(new PIXI.Sprite());
     /** The PixiJS Graphics for the level button */
     var graphics = new PIXI.Graphics();
-    graphics.beginFill(0xff0000*(i/config.levels.length), config.style.menuAlpha);
-    graphics.lineStyle(5, 0xffffff, 0.05);
+    graphics.beginFill(0xff0000*((i+1)/config.levels.length), config.style.menuAlpha/2);
+    graphics.lineStyle(1, 0xffffff, 0.05);
     graphics.drawRect(0, 0, 3 * panelHeight - 40, rowHeight);
     graphics.endFill();
     levels[i].y = i * rowHeight;
@@ -1086,7 +1182,7 @@ var slideArea = new PIXI.Container();
  * @type {String[]}
  */
 var slideText = ["Shoot bubbles to get to this number.", "Use the green joystick to move around.", "Press the red button to shoot."];
-var slideCircles = [new PIXI.Point(1.5 * panelHeight, -panelHeight / 2 + 10), new PIXI.Point(2.5 * panelHeight, height - 1.5 * panelHeight), new PIXI.Point(0.5 * panelHeight, height - 1.5 * panelHeight)];
+var slideCircles = [new PIXI.Point(1.5 * panelHeight, -panelHeight / 2+10), new PIXI.Point(2.5 * panelHeight, height - 1.5 * panelHeight), new PIXI.Point(0.5 * panelHeight, height - 1.5 * panelHeight)];
 /**
  * The center point of the menu box
  * @type {Object}
@@ -1126,9 +1222,9 @@ objectiveCircle.position.set(slideCircles[currentSlide].x, slideCircles[currentS
  * @type {Object}
  */
 var circleGraphics = new PIXI.Graphics();
-circleGraphics.beginFill(0x00ff00, 0.5);
-circleGraphics.lineStyle(5, 0x00ff00, 0.75);
-circleGraphics.drawCircle(0, 0, panelHeight / 2 - 10);
+circleGraphics.beginFill(0x00ff00, 0.1);
+circleGraphics.lineStyle(0);
+circleGraphics.drawCircle(0, 0, panelHeight - 10);
 objectiveCircle.texture = circleGraphics.generateTexture();
 /**
  * The image (PixiJS Sprite) of an arrow
@@ -1148,7 +1244,7 @@ var arrowGraphics = new PIXI.Graphics();
  */
 var arrowSize = textCenter.y / 4;
 arrowGraphics.beginFill(0x00ff00, 0.25);
-arrowGraphics.lineStyle(5, 0x00ff00, 0.5);
+arrowGraphics.lineStyle(0);
 arrowGraphics.moveTo(0.25 * arrowSize, 0);
 arrowGraphics.lineTo(arrowSize * 0.75, 0);
 arrowGraphics.lineTo(arrowSize * 0.75, -arrowSize / 2);
@@ -1214,7 +1310,7 @@ replayButton.position.set(20, height - 3 * panelHeight - 20);
 //Graphics for the replay button
 var replayButtonGraphics = new PIXI.Graphics();
 replayButtonGraphics.beginFill(config.style.baseColor, 0.5);
-replayButtonGraphics.lineStyle(1, 0xffffff, 1);
+replayButtonGraphics.lineStyle(5,0xffffff,0.1);
 replayButtonGraphics.drawRect(0, 0, 3 * panelHeight - 40, panelHeight / 2);
 replayButtonGraphics.endFill();
 replayButton.texture = replayButtonGraphics.generateTexture();
@@ -1276,8 +1372,8 @@ function shoot() {
         if(getDistance(rocket.position.x, rocket.position.y, Camera.x + width / 2, Camera.y + height / 2) < radius) {
             //Hit the rocket
             for(var i=0;i<circles.length;i++) {
-		circles[i].active = false;
-	    }
+              circles[i].active = false;
+            }
         }
     }
 }
