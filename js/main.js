@@ -67,7 +67,7 @@ renderer.view.style.top = '0px';
 renderer.view.style.width = '100%';
 renderer.view.style.height = '100%';
 document.body.appendChild(renderer.view);
-renderer.backgroundColor = 0x101010;
+renderer.backgroundColor = 0x111111;
 var width = 100,
 height = 100,
 scale = config.style.scale                ;
@@ -118,15 +118,6 @@ var minimap = new PIXI.Container();
  */
 var hud = new PIXI.Container();
 panels.addChild(hud);
-/**
- * Transparent white gradient around edges
- * @type {Object}
- */
-var border = new PIXI.Sprite.fromImage('img/border.png');
-border.width = width;
-border.height = height;
-border.alpha = 0.005;
-hud.addChild(border);
 /**
  * Get distance using the distance formula
  * @param {Number} x1 - First coordinate x
@@ -198,7 +189,11 @@ var fadeOut = [],
  */
 var fieldSize = 5000;
 var fieldBorder = new PIXI.Graphics();
-fieldBorder.beginFi
+fieldBorder.beginFill(0);
+fieldBorder.drawRect(0,0,fieldSize,fieldSize);
+fieldBorder.endFill();
+scene.addChild(fieldBorder);
+scene.mask = fieldBorder;
 /**
  * The array of PixiJS sprites for the background
  * @type {Object[]}
@@ -1065,6 +1060,7 @@ levelPane.position.set(0, panelHeight);
  */
 var rowHeight = (height-3*panelHeight) / (config.levels.length+1);
 var tutButton = new PIXI.Sprite();
+tutButton.buttonMode = true;
 tutButton.interactive = true;
 tutButton.on('pointerdown',function() {
   changePane(1);
@@ -1202,6 +1198,7 @@ menuBox.addChild(levelPane);
  */
 var directionsPane = new PIXI.Container();
 var startButton = new PIXI.Sprite();
+startButton.buttonMode = true;
 startButton.interactive = true;
 startButton.on('pointerdown',function() {
   changePane(0);
@@ -1597,7 +1594,7 @@ function update() {
                 circles[i].visible = true;
             }
             //Collision detection
-            if(getDistance(width / 2, height / 2, circles[i].x + Camera.x, circles[i].y + Camera.y) < radius + circles[i].width / 2) {
+            if(getDistance(width / 2, height / 2, circles[i].x + Camera.x, circles[i].y + Camera.y) < radius + circles[i].width / 2 && hud.visible) {
                 if(!collidingCircles.includes(circles[i])) {
                     collidingCircles.push(circles[i]);
                     circles[i].tint = 0x888888;
