@@ -608,7 +608,7 @@ var current = 0,
     }),
     /** @type {Object} - PixiJS Text */
     currentText = new PIXI.Text(current, {
-        font: Math.round(30 * scale) + 'px ' + config.style.font,
+        font: Math.round(40 * scale) + 'px ' + config.style.font,
         fill: 0xffffff
     }),
     /** @type {Boolean} */
@@ -689,13 +689,13 @@ hud.addChild(decorations);
 var crosshair = new PIXI.Graphics();
 //Inner lines
 crosshair.lineStyle(2, 0xffffff, 0.5);
-crosshair.moveTo(width / 2 - 40, height / 2);
+crosshair.moveTo(width / 2 - radius/2, height / 2);
 crosshair.lineTo(width / 2 - radius - 20, height / 2);
-crosshair.moveTo(width / 2 + 40, height / 2);
+crosshair.moveTo(width / 2 + radius/2, height / 2);
 crosshair.lineTo(width / 2 + radius + 20, height / 2);
-crosshair.moveTo(width / 2, height / 2 - 40);
+crosshair.moveTo(width / 2, height / 2 - radius/2);
 crosshair.lineTo(width / 2, height / 2 - radius - 20);
-crosshair.moveTo(width / 2, height / 2 + 40);
+crosshair.moveTo(width / 2, height / 2 + radius/2);
 crosshair.lineTo(width / 2, height / 2 + radius + 20);
 //Outer lines
 crosshair.lineStyle(2, 0xff8888, 0.25);
@@ -1392,8 +1392,9 @@ replayButton.texture = replayButtonGraphics.generateTexture();
 replayButton.interactive = true;
 replayButton.buttonMode = true;
 replayButton.on('pointerdown', function () {
-    generateLevel();
-    togglePause();
+  togglePause();
+  changePane(1);
+  generateLevel();
 });
 //Text for the replay button
 var replayButtonText = new PIXI.Text("Play Again", {
