@@ -527,7 +527,7 @@ function createCircle() {
      * @type {Object} - PixiJS Text
      */
     var text = new PIXI.Text(radius >= 0 ? circle.operator + radius : circle.operator + "(" + radius + ")", {
-        font: Math.round(30 * scale) + 'px ' + config.style.font,
+        font: Math.round(40 * scale) + 'px ' + config.style.font,
         fill: 0xffffff
     });
     displayRadius += text.width;
@@ -1167,7 +1167,7 @@ for(var i = 0; i < config.levels.length; i++) {
     });
     text2.anchor.set(1,0.5);
     text2.alpha = 0.5;
-    text2.position.set(3 * panelHeight - 40 - panelHeight/3, rowHeight/2);
+    text2.position.set(3 * panelHeight - 40, rowHeight/2);
     graphics.addChild(text2);
     levels[i].texture = graphics.generateTexture();
     levels[i].on('pointerdown', selectLevel).on('pointerup', endSelect).on('pointerupoutside', endSelect);
@@ -1327,6 +1327,12 @@ panes.push(directionsPane);
  * @type {Object}
  */
 var endPane = new PIXI.Container();
+var endPaneGraphics = new PIXI.Graphics();
+endPaneGraphics.beginFill(0xffffff,0.05);
+endPaneGraphics.lineStyle(0,0xffffff,0.1);
+endPaneGraphics.drawRect(0,-panelHeight,panelHeight*3,height-2*panelHeight);
+endPaneGraphics.endFill();
+endPane.addChild(endPaneGraphics);
 /**
  * Text for end pane - centered vertically and horizontally
  * @type {Object}
