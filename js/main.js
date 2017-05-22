@@ -468,12 +468,15 @@ function randomRadius(operator) {
  * @returns {Number}
  */
 function randomTarget() {
-
-    if(config.levels[level - 1].operators.includes('+')) {
-        return Math.round((Math.random() - 0.5) * config.levels[level - 1].range);
-    } else {
-        return Math.round(((Math.random() - 0.5) * (config.levels[level - 1].range)) / (current != 0 ? current : 1)) * current;
-    }
+    var result = 0;
+    do {
+      if(config.levels[level - 1].operators.includes('+')) {
+          result = Math.round((Math.random() - 0.5) * config.levels[level - 1].range);
+      } else {
+          result = Math.round(((Math.random() - 0.5) * (config.levels[level - 1].range)) / (current != 0 ? current : 1)) * current;
+      }
+    } while(result == 0)
+    return result;
 }
 /**
  * A list of all fill-size, labeled, PixiJS sprites representing the circles
