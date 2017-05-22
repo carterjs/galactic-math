@@ -418,14 +418,13 @@ function resetRocket() {
      * @type {Number}
      */
     var angle = Math.random() * 2 * Math.PI;
-    rocket.position.x = Camera.x + width / 2 + Math.cos(angle) * (Math.max(width, height));
-    rocket.position.y = Camera.x + height / 2 + Math.sin(angle) * (Math.max(width, height));
-    rocket.velocityX = -Math.cos(angle) * 10;
-    rocket.velocityY = -Math.sin(angle) * 10;
+    rocket.position.x = -Camera.x + width/2 + Math.cos(angle) * Math.min(width,height)/2;
+    rocket.position.y = -Camera.y + height/2 + Math.sin(angle) * Math.min(width,height)/2;
+    rocket.velocityX = -Math.cos(angle) * 20;
+    rocket.velocityY = -Math.sin(angle) * 20;
     rocket.rotation = angle - Math.PI / 2;
     rocket.active = true;
     rocket.visible = false;
-    rocket.seen = false;
     rocket.scale.set(0);
 }
 resetRocket();
@@ -469,10 +468,11 @@ function randomRadius(operator) {
  * @returns {Number}
  */
 function randomTarget() {
+
     if(config.levels[level - 1].operators.includes('+')) {
         return Math.round((Math.random() - 0.5) * config.levels[level - 1].range);
     } else {
-        return Math.round(((Math.random() - 0.5) * (config.levels[level - 1].range)) / current) * current;
+        return Math.round(((Math.random() - 0.5) * (config.levels[level - 1].range)) / (current != 0 ? current : 1)) * current;
     }
 }
 /**
@@ -657,9 +657,6 @@ function generateLevel() {
         }
         generateLevel();
     }
-    timers.push(new Timer(Math.round(Math.random()*100),function() {
-         resetRocket();
-    }));
 }
 generateLevel();
 /**
@@ -711,6 +708,12 @@ crosshair.alpha = 0.5;
 hud.addChild(crosshair);
 //Position minimap
 minimap.position.set(width / 2 - panelHeight / 2, height - panelHeight);
+//Mask minimap
+var miniMask = new PIXI.Graphics();
+miniMask.beginFill();
+miniMask.drawRect(width/2-panelHeight/2,height-panelHeight,panelHeight,panelHeight);
+miniMask.endFill();
+minimap.mask = miniMask;
 var xCross = new PIXI.Graphics()
 xCross.lineStyle(2, 0xff0000, 0.5);
 xCross.moveTo((Camera.x + width / 2) * (panelHeight / fieldSize), 0);
@@ -1381,7 +1384,6 @@ replayButton.interactive = true;
 replayButton.buttonMode = true;
 replayButton.on('pointerdown', function () {
     generateLevel();
-    toggleButton();
     togglePause();
 });
 //Text for the replay button
@@ -1418,7 +1420,7 @@ function shoot() {
         if(current == target) {
             changePane(2);
             levelPane.visible = directionsPane.visible = false;
-			togglePause();
+			      togglePause();
         } else {
             //Check for loss
             if(Math.abs(current) > 500 || (current == 0 && !config.levels[level - 1].operators.includes('+'))) {
@@ -1426,16 +1428,16 @@ function shoot() {
                 endText.position.x = textCenter.x - endText.width / 2;
                 changePane(2);
                 levelPane.visible = directionsPane.visible = false;
-				togglePause();
+				        togglePause();
             }
         }
         indicator.alpha = 1;
         updateCurrent();
-        if(getDistance(rocket.position.x, rocket.position.y, Camera.x + width / 2, Camera.y + height / 2) < radius) {
+        if(getDistance(rocket.position.x, rocket.position.y, -Camera.x + width / 2, -Camera.y + height / 2) < radius + rocket.width) {
             //Hit the rocket
             for(var i=0;i<circles.length;i++) {
-		circles[i].active = false;
-	    }
+	             circles[i].active = false;
+	          }
         }
     }
 }
@@ -1445,6 +1447,7 @@ function shoot() {
  */
 var pulse = true;
 var timerSet = false;
+var rocketQueued = false;
 /**
  * Update everything - called later by the game loop
  */
@@ -1555,9 +1558,16 @@ function update() {
         //Culling and respawning
         if(inView(rocket.x, rocket.y - rocket.height / 2, rocket.height, rocket.height)) {
             rocket.visible = true;
-            timers.push(new Timer(200,function() {
-                rocket.seen = true;
+        } else {
+          if(!rocketQueued) {
+            rocketQueued = true;
+            timers.push(new Timer(Math.random()*10000+5000,function() {
+              rocketQueued = false;
+              if(!inView(rocket.x, rocket.y - rocket.height / 2, rocket.height, rocket.height)) {
+                resetRocket();
+              }
             }));
+          }
         }
     }
 	//Update rocket on minimap
